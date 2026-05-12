@@ -1,0 +1,334 @@
+<script>
+(function(){
+'use strict';
+const STATIONS=['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
+const ICAO_FLAGS={TNCA:'🇦🇼',TNCB:'🇧🇶',TNCC:'🇨🇼',TNCM:'🇸🇽',SVMI:'🇻🇪',SVVA:'🇻🇪'};
+const METAR_TPL='https://tgftp.nws.noaa.gov/data/observations/metar/stations/{ICAO}.TXT';
+const TAF_TPL='https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/{ICAO}.TXT';
+const KNMI_URL='https://www.knmidc.org/weather/bonaire/?Current';
+const METAR_REFRESH_MS=30000,VIS_REFRESH_MS=60000,TIMEOUT_MS=12000;
+const FALLBACKS=[{prefix:'https://api.allorigins.win/get?url=',type:'json'},{prefix:'https://r.jina.ai/https://',type:'raw'}];
+const MAX_RETRIES=2,BACKOFF_BASE_MS=400;
+const $=id=>document.getElementById(id);
+const metarTbody=$('metar'),tafTbody=$('taf'),synopTbody=$('synop');
+const lastUpdatedEl=$('last-updated'),tafUpdatedEl=$('taf-updated'),synopUpdatedEl=$('synop-updated');
+const visValueEl=$('vis-value'),visStatusEl=$('vis-status'),visTsEl=$('vis-timestamp');
+let mute=false,testMode=false;
+const metarState={};
+const loadedTabs={metar:false,taf:false,synop:false,stations:false,atc:true,ops:false,obs:true,weather:false};
+let svgIdCounter=0;
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function pad(n){return n<10?'0'+n:''+n;}
+function tickClocks(){
+  const d=new Date();
+  $('local-clock').textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  $('local-date').textContent=`${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
+  $('utc-clock').textContent=`${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+  $('utc-date').textContent=`${pad(d.getUTCDate())}-${pad(d.getUTCMonth()+1)}-${d.getUTCFullYear()}`;
+}
+tickClocks();setInterval(tickClocks,1000);
+function nowStamp(){const d=new Date();return`${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;}
+let _audioCtx=null;
+function getAudioCtx(){if(_audioCtx)return _audioCtx;try{_audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){_audioCtx=null;}return _audioCtx;}
+function playBeep(){if(mute)return;const ctx=getAudioCtx();if(!ctx)return;try{if(ctx.state==='suspended')ctx.resume();const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=880;g.gain.value=0.015;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.1);}catch(e){}}
+function playCriticalAlarm(){if(mute)return;const ctx=getAudioCtx();if(!ctx)return;try{if(ctx.state==='suspended')ctx.resume();const now=ctx.currentTime,g=ctx.createGain();g.gain.value=0.05;g.connect(ctx.destination);const o1=ctx.createOscillator(),o2=ctx.createOscillator();o1.type='sawtooth';o2.type='sine';o1.frequency.setValueAtTime(520,now);o2.frequency.setValueAtTime(780,now);o1.connect(g);o2.connect(g);o1.start(now);o2.start(now);o1.frequency.exponentialRampToValueAtTime(880,now+0.12);o2.frequency.exponentialRampToValueAtTime(1200,now+0.12);o1.frequency.exponentialRampToValueAtTime(600,now+0.22);o2.frequency.exponentialRampToValueAtTime(900,now+0.22);o1.frequency.exponentialRampToValueAtTime(1000,now+0.30);o2.frequency.exponentialRampToValueAtTime(1400,now+0.30);o1.stop(now+0.7);o2.stop(now+0.7);}catch(e){}}
+async function fetchWithTimeout(url,timeout=TIMEOUT_MS){const ctrl=new AbortController(),id=setTimeout(()=>ctrl.abort(),timeout);try{const r=await fetch(url,{cache:'no-store',mode:'cors',signal:ctrl.signal});clearTimeout(id);return r;}catch(e){clearTimeout(id);throw e;}}
+async function robustFetchText(url){
+  try{const r=await fetchWithTimeout(url);if(r){if(r.status===404||r.status===410)return{ok:false,permanent:true,error:'not found'};if(r.ok){const t=await r.text();if(t&&t.trim())return{ok:true,text:t.trim()};}}}catch(e){}
+  try{const r=await fetchWithTimeout(FALLBACKS[0].prefix+encodeURIComponent(url));if(r&&r.ok){const j=await r.json();if(j&&typeof j.contents==='string'&&j.contents.trim())return{ok:true,text:j.contents.trim()};}}catch(e){}
+  try{const stripped=url.replace(/^https?:\/\//,'');const r=await fetchWithTimeout(FALLBACKS[1].prefix+stripped,TIMEOUT_MS*2);if(r&&r.ok){const t=await r.text();if(t&&t.trim())return{ok:true,text:t.trim()};}}catch(e){}
+  return{ok:false,error:'no content'};
+}
+async function fetchWithRetries(url,attempts=MAX_RETRIES){for(let i=0;i<attempts;i++){const o=await robustFetchText(url);if(o.ok)return o;if(o.permanent)return o;if(i<attempts-1){const ms=BACKOFF_BASE_MS*Math.pow(2,i)+Math.floor(Math.random()*200);await new Promise(r=>setTimeout(r,ms));}}return{ok:false,error:'fetch failed'};}
+function extractKnmiVis(text){if(!text||!text.trim())return null;const s=String(text).replace(/\u00A0/g,' ').replace(/\s+/g,' ');let m=s.match(/(?:Visibility|Visibiliteit|Zicht(?:baarheid)?)\s*\(?\s*km\s*\)?[^0-9]{0,30}([0-9]+(?:\.[0-9]+)?)\b/i);if(m)return{meters:Math.round(parseFloat(m[1])*1000)};m=s.match(/(?:Visibility|Visibiliteit|Zicht(?:baarheid)?)\s*\(?\s*m\s*\)?[^0-9]{0,30}([0-9]{3,6})\b/i);if(m)return{meters:parseInt(m[1],10)};m=s.match(/(?:Visibility|Visibiliteit|Zicht(?:baarheid)?)[^0-9]{0,30}([0-9]{3,6})\b/i);if(m)return{meters:parseInt(m[1],10)};m=s.match(/\b([0-9]{3,6})\s?(?:m|meter|meters)\b/i);if(m)return{meters:parseInt(m[1],10)};return null;}
+function applyVisColor(meters){visStatusEl.classList.remove('low');if(isNaN(meters)){visStatusEl.style.background='';visStatusEl.style.boxShadow='';visValueEl.style.color='';return;}let col,sh;if(meters>=8000){col='var(--ok)';sh='0 0 0 3px var(--ok-dim),0 0 8px var(--ok)';}else if(meters>=2000){col='var(--warn)';sh='0 0 0 3px rgba(245,158,11,0.15),0 0 8px var(--warn)';}else{col='var(--alert)';sh='0 0 0 3px var(--alert-dim),0 0 8px var(--alert)';visStatusEl.classList.add('low');}visStatusEl.style.background=col;visStatusEl.style.boxShadow=sh;visValueEl.style.color=col;}
+async function updateVis(){try{const out=await fetchWithRetries(KNMI_URL);if(!out.ok){visValueEl.textContent='—';applyVisColor(NaN);visTsEl.style.display='none';return;}const r=extractKnmiVis(out.text);if(!r){visValueEl.textContent='—';applyVisColor(NaN);visTsEl.textContent='Not found';visTsEl.style.display='block';return;}const m=r.meters;if(m>=1000)visValueEl.innerHTML=`<span style="font-size:2rem">${(m/1000).toFixed(1)}</span><span class="vis-unit"> km</span>`;else visValueEl.innerHTML=`<span style="font-size:1.7rem">${m}</span><span class="vis-unit"> m</span>`;applyVisColor(m);const inner=visValueEl.querySelector('span');if(inner)inner.style.color='inherit';visTsEl.textContent=`Updated ${nowStamp()}`;visTsEl.style.display='block';}catch(e){console.error('updateVis',e);visValueEl.textContent='—';applyVisColor(NaN);}}
+function cleanMetar(s){return String(s||'').replace(/\sRMK[\s\S]*/i,'').replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'').replace(/\bAUTO\b|\bCOR\b/gi,'').trim();}
+function parseMetar(raw){const cleaned=cleanMetar(raw),tokens=cleaned.split(/\s+/);const time=tokens[1]||'--';const windBase=tokens.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2,3})?KT$/.test(x))||'/////KT';const varDir=tokens.find(x=>/^\d{3}V\d{3}$/.test(x));const wind=varDir?`${windBase} ${varDir}`:windBase;const visTokens=tokens.filter(x=>/^\d{4}(?:[NSEW]{1,2})?$/.test(x));const vis=visTokens.length?visTokens.join(' '):'--';const visMin=visTokens.length?Math.min(...visTokens.map(v=>parseInt(v,10)).filter(n=>!isNaN(n))):NaN;const wx=tokens.filter(x=>/^(?:\+|-)?(?:VC)?(?:TS|VCTS|VCSH|TSRA|SH|SHRA|RA|DZ|SN|FG|BR|HZ|SQ|PO)/.test(x)).join(' ')||'--';const cldMatch=cleaned.match(/((?:FEW|SCT|BKN|OVC)(?:\d{3}|\/{3})(?:TCU|CB)?)/gi)||[];const cld=cldMatch.join(' ')||'--';const td=tokens.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'--';const qp=tokens.find(x=>/^Q\d{4}$/.test(x))||null;let qnh='—';if(qp){const h=qp.slice(1);qnh=`${h} / ${(parseInt(h,10)*0.029529983).toFixed(2)}`;}const gustMatch=windBase.match(/G(\d{2,3})/);const gust=gustMatch?+gustMatch[1]:0;let age=0;if(/^\d{6}Z$/.test(time)){const now=new Date(),dd=+time.slice(0,2),hh=+time.slice(2,4),mm=+time.slice(4,6);const t=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),dd,hh,mm);age=(Date.now()-t)/60000;}return{time,wind,windBase,vis,visTokens,visMin,wx,cld,td,qnh,gust,age,raw:cleaned};}
+function isWxCritical(wx){return/\b(?:VCTS|VCSH|TS|TSRA|SHRA)\b|(^|\s)[+-]\s*(?:SHRA|SH|RA|DZ|SN|FG|BR|HZ)/i.test(String(wx||''));}
+function isCloudCB(s){return/(?:FEW|SCT|BKN|OVC)\d{3}(?:CB|TCU)/i.test(String(s||''));}
+function buildMetarTable(){metarTbody.innerHTML='';STATIONS.forEach(icao=>{metarState[icao]={lastTime:null,lastRaw:null,pastRaw:null,row:null,rawEl:null,pastEl:null,highlightTimeout:null};const tr=document.createElement('tr');tr.innerHTML=`<td class="station"><span class="icao-flag">${ICAO_FLAGS[icao]||''}</span>${icao}</td><td class="time">--</td><td class="wind">--</td><td>--</td><td class="wx">--</td><td class="clouds">--</td><td>--</td><td>--</td>`;const rr=document.createElement('tr');rr.className='raw';rr.innerHTML=`<td colspan="8"><span class="raw-current"></span><span class="raw-past"></span></td>`;metarTbody.appendChild(tr);metarTbody.appendChild(rr);metarState[icao].row=tr;metarState[icao].rawEl=rr.querySelector('.raw-current');metarState[icao].pastEl=rr.querySelector('.raw-past');});}
+function markTimeUpdated(icao){const st=metarState[icao];if(!st||!st.row)return;const tc=st.row.querySelector('td.time');if(!tc)return;if(st.highlightTimeout){clearTimeout(st.highlightTimeout);st.highlightTimeout=null;}tc.classList.add('time-updated');tc.classList.remove('dim');st.highlightTimeout=setTimeout(()=>{tc.classList.add('dim');setTimeout(()=>{tc.classList.remove('time-updated','dim');st.highlightTimeout=null;},700);},5*60*1000);}
+function renderMetar(icao,raw){if(!raw)return false;const lines=String(raw).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);let metarLine=null;for(const ln of lines){if(ln.startsWith(icao)||/\b\d{6}Z\b/.test(ln)){metarLine=ln;break;}}if(!metarLine&&lines.length)metarLine=lines[lines.length-1];if(!metarLine)return false;const p=parseMetar(metarLine);const st=metarState[icao];if(!st||!st.row)return false;const tds=st.row.querySelectorAll('td');[2,3,4,5].forEach(i=>tds[i].classList.remove('alert','cloud-critical','wx-critical'));st.row.classList.toggle('stale',p.age>120);if(st.lastRaw&&st.lastRaw!==metarLine)st.pastRaw=st.lastRaw;st.lastRaw=metarLine;const prevTime=st.lastTime;st.lastTime=p.time;const isNew=prevTime!==p.time;let timeDisplay='--';const m6=p.time.match(/^(\d{2})(\d{2})(\d{2})Z$/);if(m6)timeDisplay=`${m6[2]}:${m6[3]}Z`;else timeDisplay=p.time;tds[1].textContent=timeDisplay;tds[2].textContent=p.wind;tds[3].textContent=p.vis;tds[4].textContent=p.wx;tds[5].textContent=p.cld;tds[6].textContent=p.td;tds[7].textContent=p.qnh;if(st.rawEl)st.rawEl.textContent=st.lastRaw||'';if(st.pastEl){if(st.pastRaw){st.pastEl.style.display='block';st.pastEl.textContent=`Previous: ${st.pastRaw}`;}else{st.pastEl.style.display='none';st.pastEl.textContent='';}}const hasGust=p.gust>0;const wxCrit=isWxCritical(p.wx);const cloudFlag=isCloudCB(p.cld);if(isNew){playBeep();markTimeUpdated(icao);}if(hasGust&&isNew)tds[2].classList.add('alert');if(!isNaN(p.visMin)&&p.visMin<=5000)tds[3].classList.add('alert');if(wxCrit)tds[4].classList.add('alert','wx-critical');if(cloudFlag)tds[5].classList.add('cloud-critical');const criticalStation=p.gust>=35;const criticalGlobal=/\b(?:VCTS|TS|TSRA)\b/i.test(p.wx);if(isNew&&(criticalStation||criticalGlobal))playCriticalAlarm();return true;}
+async function fetchMetarFor(icao){try{const url=METAR_TPL.replace('{ICAO}',icao);const out=await fetchWithRetries(url);if(!out.ok)return false;const lines=out.text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);for(let i=lines.length-1;i>=0;i--){const ln=lines[i];if(ln.startsWith(icao)||/\b\d{6}Z\b/.test(ln)){if((icao==='SVMI'||icao==='SVVA')&&/\bAUTO\b/i.test(ln))continue;window._renderMetarHooked(icao,ln);return true;}}return false;}catch(e){console.error('METAR',icao,e);return false;}}
+async function refreshAllMetars(){const results=await Promise.all(STATIONS.map(s=>fetchMetarFor(s)));if(lastUpdatedEl)lastUpdatedEl.textContent=`Last updated: ${nowStamp()}`;return results.some(Boolean);}
+function parseTafSeg(seg){const tok=seg.trim().split(/\s+/);const wb=tok.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2,3})?KT$/.test(x))||'--';const vd=tok.find(x=>/^\d{3}V\d{3}$/.test(x));const wind=wb==='--'?'--':(vd?`${wb} ${vd}`:wb);const vt=tok.filter(x=>/^\d{4}(?:[NSEW]{1,2})?$/.test(x)||x==='9999'||/^P\d+SM$/.test(x));const vis=vt.length?vt[0]:'--';const visNum=vis==='9999'||/^P/.test(vis)?9999:(parseInt(vis,10)||NaN);const wx=tok.filter(x=>/^(?:\+|-)?(?:VC)?(?:TS|VCTS|VCSH|TSRA|SH|SHRA|RA|DZ|SN|FG|BR|HZ|SQ|PO)/.test(x)).join(' ')||'--';const cm=seg.match(/((?:FEW|SCT|BKN|OVC)(?:\d{3}|\/{3})(?:TCU|CB)?)/gi)||[];const cld=cm.join(' ')||'--';const qp=tok.find(x=>/^Q\d{4}$/.test(x));let qnh='—';if(qp){const h=qp.slice(1);qnh=`${h} / ${(parseInt(h,10)*0.029529983).toFixed(2)}`;}return{wind,windBase:wb,vis,visNum,wx,cld,qnh};}
+function parseTaf(rawText){if(!rawText)return null;const full=rawText.replace(/\r?\n/g,' ').replace(/\s{2,}/g,' ').trim();const valid=(full.match(/\b(\d{4}\/\d{4})\b/)||[])[1]||'--';const tm=[...full.matchAll(/T([XN])(M?\d{2})\/\d{4}Z/gi)];let tx=null,tn=null;for(const m of tm){const sgn=m[2].startsWith('M')?-1:1;const v=sgn*parseInt(m[2].replace('M',''),10);if(m[1].toUpperCase()==='X')tx=v;else tn=v;}let td='--';if(tx!==null&&tn!==null)td=`${tx}°/${tn}°`;else if(tx!==null)td=`TX ${tx}°`;else if(tn!==null)td=`TN ${tn}°`;const RE=/\b(TEMPO|BECMG|PROB\d{2}(?:\s+TEMPO)?|FM\d{6})\b/g;const sp=[];let m;while((m=RE.exec(full))!==null)sp.push({idx:m.index,kw:m[1]});const baseEnd=sp.length?sp[0].idx:full.length;const base=parseTafSeg(full.slice(0,baseEnd));const changes=[];for(let i=0;i<sp.length;i++){const{idx,kw}=sp[i];const segEnd=i+1<sp.length?sp[i+1].idx:full.length;const body=full.slice(idx+kw.length,segEnd).trim();const seg=parseTafSeg(body);let type='TEMPO',label=kw;if(/^FM/.test(kw)){type='FM';const h=kw.slice(4,8);label=`FM ${h.slice(0,2)}:${h.slice(2)}`;}else if(/^BECMG/.test(kw)){type='BECMG';label='BECMG';}else if(/^PROB\d{2}\s+TEMPO/.test(kw)){type='TEMPO';label=kw;}else if(/^PROB\d{2}/.test(kw)){type='PROB';label=kw;}const pm=body.match(/^(\d{4}\/\d{4})/);changes.push({type,label,period:pm?pm[1]:'',...seg});}return{valid,td,base,changes,rawFull:full};}
+function sanitize(text){if(!text)return'';return String(text).split('\n').map(l=>l.trim()).filter(l=>{if(/^\s*URL\s*Source\s*:/i.test(l))return false;if(/^\s*Published\s*Time\s*:/i.test(l))return false;if(/^\s*Markdown\s*Content\s*:/i.test(l))return false;if(/^https?:\/\//i.test(l))return false;return l.length>0;}).join('\n');}
+const TAF_ICAOS=STATIONS.slice(0,3);
+function buildTafTable(){tafTbody.innerHTML='';TAF_ICAOS.forEach(icao=>{const tr=document.createElement('tr');tr.dataset.icao=icao;tr.dataset.tafBase='1';tr.innerHTML=`<td class="station"><span class="icao-flag">${ICAO_FLAGS[icao]||''}</span>${icao}</td><td class="time">--</td><td class="wind">--</td><td>--</td><td class="wx">--</td><td class="clouds">--</td><td>--</td><td>--</td>`;const rr=document.createElement('tr');rr.className='taf-raw-row';rr.dataset.icao=icao;rr.innerHTML=`<td colspan="8"><span class="taf-raw-text"></span></td>`;tafTbody.appendChild(tr);tafTbody.appendChild(rr);});}
+function applyTafAlerts(tds,seg){[2,3,4,5].forEach(i=>tds[i].classList.remove('alert','cloud-critical','wx-critical'));if(seg.windBase!=='--'&&/G\d{2,3}KT/i.test(seg.windBase))tds[2].classList.add('alert');if(!isNaN(seg.visNum)&&seg.visNum<=5000)tds[3].classList.add('alert');if(isWxCritical(seg.wx))tds[4].classList.add('alert','wx-critical');if(/(?:FEW|SCT|BKN|OVC)\d{3}(?:CB|TCU)/i.test(seg.cld))tds[5].classList.add('cloud-critical');}
+function renderTafRow(icao,rawText){if(!rawText)return;const parsed=parseTaf(sanitize(rawText));if(!parsed)return;const tr=tafTbody.querySelector(`tr[data-taf-base][data-icao="${icao}"]`);if(!tr)return;const tds=tr.querySelectorAll('td');tds[1].textContent=parsed.valid;tds[2].textContent=parsed.base.wind;tds[3].textContent=parsed.base.vis;tds[4].textContent=parsed.base.wx;tds[5].textContent=parsed.base.cld;tds[6].textContent=parsed.td;tds[7].textContent=parsed.base.qnh;applyTafAlerts(tds,parsed.base);const rr=tafTbody.querySelector(`tr.taf-raw-row[data-icao="${icao}"]`);if(rr){const sp=rr.querySelector('.taf-raw-text');if(sp)sp.textContent=parsed.rawFull;}tafTbody.querySelectorAll(`tr.taf-change-row[data-icao="${icao}"]`).forEach(r=>r.remove());parsed.changes.forEach(ch=>{const cr=document.createElement('tr');cr.className=`taf-change-row type-${ch.type}`;cr.dataset.icao=icao;cr.innerHTML=`<td>${ch.label}</td><td class="time">--</td><td class="wind">--</td><td>--</td><td class="wx">--</td><td class="clouds">--</td><td>--</td><td>--</td>`;const ctds=cr.querySelectorAll('td');ctds[1].textContent=ch.period||'--';ctds[2].textContent=ch.wind;ctds[3].textContent=ch.vis;ctds[4].textContent=ch.wx;ctds[5].textContent=ch.cld;ctds[6].textContent='—';ctds[7].textContent=ch.qnh;applyTafAlerts(ctds,ch);if(rr)tafTbody.insertBefore(cr,rr);else tafTbody.appendChild(cr);});}
+async function loadTafRow(icao){try{const out=await fetchWithRetries(TAF_TPL.replace('{ICAO}',icao));if(out.ok){renderTafRow(icao,out.text);if(tafUpdatedEl)tafUpdatedEl.textContent=`TAF last updated: ${nowStamp()}`;}}catch(e){console.error('TAF',icao,e);}}
+async function loadAllTafs(){await Promise.all(TAF_ICAOS.map(i=>loadTafRow(i)));}
+
+/* WMO FM-12 SYNOP DECODER */
+const T_IX={'1':'Manned, ww/W included','2':'Manned, no significant wx','3':'Manned, no observation','4':'Auto, ww/W included','5':'Auto, no significant wx','6':'Auto, no observation','7':'Auto, ww/W included'};
+const T_H={'0':'0–50 m','1':'50–100 m','2':'100–200 m','3':'200–300 m','4':'300–600 m','5':'600–1000 m','6':'1000–1500 m','7':'1500–2000 m','8':'2000–2500 m','9':'≥2500 m or no cloud','/':'unknown'};
+const T_N={'0':'0/8 — Sky clear','1':'1/8','2':'2/8','3':'3/8','4':'4/8','5':'5/8','6':'6/8','7':'7/8','8':'8/8 — Overcast','9':'Sky obscured','/':'Not observable'};
+const T_A={'0':'Rising then falling; same/higher','1':'Rising then steady','2':'Rising steadily','3':'Falling/steady, then rising','4':'Steady','5':'Falling then rising; same/lower','6':'Falling then steady','7':'Falling steadily','8':'Steady or rising, then falling'};
+const T_WW={'00':'Cloud development not observed','01':'Clouds dissolving','02':'State of sky unchanged','03':'Clouds forming/developing','04':'Visibility reduced by smoke','05':'Haze','06':'Widespread dust in suspension','07':'Dust/sand raised by wind','08':'Dust/sand whirl(s)','09':'Duststorm/sandstorm within sight','10':'Mist','11':'Patches of shallow fog','12':'Continuous shallow fog','13':'Lightning visible, no thunder','14':'Precip in sight, not reaching ground','15':'Precip in sight, distant (>5 km)','16':'Precip in sight, near but not at station','17':'Thunderstorm, no precip','18':'Squalls','19':'Funnel cloud(s)','20':'Drizzle/snow grains, ended in last hour','21':'Rain, ended in last hour','22':'Snow, ended in last hour','23':'Rain & snow, ended in last hour','24':'Freezing precip, ended in last hour','25':'Rain showers, ended in last hour','26':'Snow showers, ended in last hour','27':'Hail showers, ended in last hour','28':'Fog, ended in last hour','29':'Thunderstorm, ended in last hour','30':'Slight/moderate duststorm, decreased','31':'Slight/moderate duststorm, no change','32':'Slight/moderate duststorm, increased','33':'Severe duststorm, decreased','34':'Severe duststorm, no change','35':'Severe duststorm, increased','36':'Slight drifting snow','37':'Heavy drifting snow','38':'Slight blowing snow','39':'Heavy blowing snow','40':'Fog at distance','41':'Fog in patches','42':'Fog, sky visible, thinning','43':'Fog, sky obscured, thinning','44':'Fog, sky visible, no change','45':'Fog, sky obscured, no change','46':'Fog, sky visible, thickening','47':'Fog, sky obscured, thickening','48':'Fog, depositing rime, sky visible','49':'Fog, depositing rime, sky obscured','50':'Drizzle slight, intermittent','51':'Drizzle slight, continuous','52':'Drizzle moderate, intermittent','53':'Drizzle moderate, continuous','54':'Drizzle heavy, intermittent','55':'Drizzle heavy, continuous','56':'Freezing drizzle, slight','57':'Freezing drizzle, moderate/heavy','58':'Drizzle & rain, slight','59':'Drizzle & rain, moderate/heavy','60':'Rain slight, intermittent','61':'Rain slight, continuous','62':'Rain moderate, intermittent','63':'Rain moderate, continuous','64':'Rain heavy, intermittent','65':'Rain heavy, continuous','66':'Freezing rain, slight','67':'Freezing rain, moderate/heavy','68':'Rain/drizzle & snow, slight','69':'Rain/drizzle & snow, moderate/heavy','70':'Snow slight, intermittent','71':'Snow slight, continuous','72':'Snow moderate, intermittent','73':'Snow moderate, continuous','74':'Snow heavy, intermittent','75':'Snow heavy, continuous','76':'Diamond dust','77':'Snow grains','78':'Star-like snow crystals','79':'Ice pellets','80':'Rain shower(s), slight','81':'Rain shower(s), moderate/heavy','82':'Rain shower(s), violent','83':'Rain & snow shower(s), slight','84':'Rain & snow shower(s), moderate/heavy','85':'Snow shower(s), slight','86':'Snow shower(s), moderate/heavy','87':'Snow/ice pellet showers, slight','88':'Snow/ice pellet showers, moderate/heavy','89':'Hail shower(s), slight','90':'Hail shower(s), moderate/heavy','91':'Slight rain at obs, TS in last hour','92':'Moderate/heavy rain at obs, TS in last hour','93':'Slight snow/hail at obs, TS in last hour','94':'Moderate/heavy snow/hail at obs, TS in last hour','95':'Slight/moderate TS with rain/snow','96':'Slight/moderate TS with hail','97':'Heavy TS with rain/snow','98':'TS with duststorm/sandstorm','99':'Heavy TS with hail'};
+const T_W={'0':'Cloud ≤ 1/2','1':'Cloud > 1/2 part of period','2':'Cloud > 1/2 throughout','3':'Sandstorm/blowing snow','4':'Fog or thick haze','5':'Drizzle','6':'Rain','7':'Snow or rain & snow','8':'Shower(s)','9':'Thunderstorm(s)'};
+const T_CL={'0':'No CL clouds','1':'Cu humilis/fractus','2':'Cu mediocris/congestus','3':'Cb calvus','4':'Sc from Cu','5':'Sc not from Cu','6':'Stratus or fractus','7':'Fractus of bad weather','8':'Cu and Sc different levels','9':'Cb capillatus'};
+const T_CM={'0':'No CM clouds','1':'As translucidus','2':'As opacus or Ns','3':'Ac translucidus','4':'Patches of Ac','5':'Ac in bands','6':'Ac from Cu/Cb','7':'Ac double-layered','8':'Ac castellanus/floccus','9':'Ac chaotic sky'};
+const T_CH={'0':'No CH clouds','1':'Ci fibratus/uncinus','2':'Ci spissatus','3':'Ci spissatus from Cb','4':'Ci increasing','5':'Ci & Cs <45°','6':'Ci & Cs >45°','7':'Cs covering whole sky','8':'Cs partial','9':'Cc predominant'};
+const T_TR={'0':'Not used','1':'6 hours','2':'12 hours','3':'18 hours','4':'24 hours','5':'1 hour','6':'2 hours','7':'3 hours','8':'9 hours','9':'15 hours','/':'unknown'};
+function decodeVV(vv){if(vv==='//') return null;const n=parseInt(vv,10);if(isNaN(n))return null;if(n===0)return'<100 m';if(n<=50)return`${(n*0.1).toFixed(1)} km`;if(n<=55)return null;if(n<=80)return`${n-50} km`;if(n<=88)return`${30+(n-80)*5} km`;if(n===89)return'≥ 70 km';const alt={'90':'<0.05 km','91':'0.05 km','92':'0.2 km','93':'0.5 km','94':'1 km','95':'2 km','96':'4 km','97':'10 km','98':'20 km','99':'≥50 km'};return alt[vv]||null;}
+function decodeTemp(g){if(g.length!==5)return null;const sn=g[1],ttt=g.slice(2);if(ttt==='///')return null;const sign=sn==='1'?-1:1;const t=parseInt(ttt,10);if(isNaN(t))return null;return+(sign*t/10).toFixed(1);}
+function decodePressure(g){if(g.length!==5)return null;const p=g.slice(1);if(p==='////')return null;let val;if(p[3]==='/'){val=parseInt(p.slice(0,3),10);if(isNaN(val))return null;}else{val=parseInt(p,10);if(isNaN(val))return null;val=val/10;}if(val<500)val+=1000;return+val.toFixed(1);}
+function decodePressureTendency(g){if(g.length!==5)return null;const a=g[1],ppp=g.slice(2);if(ppp==='///')return{a,change:null,desc:T_A[a]||null};const ch=parseInt(ppp,10);if(isNaN(ch))return{a,change:null,desc:T_A[a]||null};const sign=(a>='5')?-1:1;return{a,change:+(sign*ch/10).toFixed(1),desc:T_A[a]||null};}
+function decodePrecip(g){if(g.length!==5)return null;const rrr=g.slice(1,4),tr=g[4];let amount=null;if(rrr!=='///'){const n=parseInt(rrr,10);if(!isNaN(n)){if(n<=988)amount=n;else if(n===989)amount='≥989';else if(n===990)amount='trace';else if(n>=991&&n<=999)amount=+((n-990)/10).toFixed(1);}}return{amount,period:tr,periodDesc:T_TR[tr]||null};}
+function decodeNddff(g){if(g.length!==5)return null;const N=g[0],dd=g.slice(1,3),ff=g.slice(3,5);let dir=null,sp=null;if(dd!=='//'){const d=parseInt(dd,10);if(!isNaN(d)){if(d===0)dir='Calm';else if(d===99)dir='VRB';else dir=d*10;}}if(ff!=='//'){const s=parseInt(ff,10);if(!isNaN(s))sp=s;}return{N,dir,sp};}
+function dirCardinal(deg){if(typeof deg!=='number')return deg||'—';const c=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return c[Math.round(deg/22.5)%16]+' '+deg+'°';}
+function parseSynopBulletin(text){const out={header:null,bulletinTime:null,windUnits:null,reports:[]};if(!text)return out;const hm=text.match(/\b(S[IM][A-Z]{2}\d{2})\s+([A-Z]{4})\s+(\d{6})/);if(hm){out.header={ttaaii:hm[1],origin:hm[2],dt:hm[3]};const tt=hm[3];out.bulletinTime=`Day ${tt.slice(0,2)} · ${tt.slice(2,4)}:${tt.slice(4,6)}Z`;}const aaxxIdx=text.search(/\bAAXX\s+\d{5}\b/);if(aaxxIdx<0)return out;const yyMatch=text.slice(aaxxIdx).match(/AAXX\s+(\d{2})(\d{2})(\d)/);if(yyMatch){out.dayObs=yyMatch[1];out.hourObs=yyMatch[2];const iw=yyMatch[3];out.windUnits=(iw==='3'||iw==='4')?'kn':'m/s';}const afterAaxx=text.slice(aaxxIdx).replace(/^AAXX\s+\d{5}\s*/,'');const segments=afterAaxx.split('=').map(s=>s.trim()).filter(Boolean);segments.forEach(seg=>{const tokens=seg.split(/\s+/).filter(Boolean);if(!tokens.length)return;if(!/^\d{5}$/.test(tokens[0]))return;const rep=decodeReport(tokens,out.windUnits);if(rep)out.reports.push(rep);});return out;}
+function decodeReport(tokens,windUnits){const r={iiiii:tokens[0],raw:tokens.join(' '),windUnits,iR:null,iX:null,h:null,VV:null,visText:null,N:null,dir:null,windSp:null,T:null,Td:null,RH:null,Pstn:null,Pmsl:null,tendency:null,precip:null,ww:null,W1:null,W2:null,Nh:null,CL:null,CM:null,CH:null,Tmax:null,Tmin:null,precip24:null};let i=1;if(i<tokens.length&&/^\d{5}$/.test(tokens[i])){const g=tokens[i];r.iR=g[0];r.iX=g[1];r.h=g[2];r.VV=g.slice(3);r.visText=decodeVV(r.VV);i++;}if(i<tokens.length&&/^\d{5}$/.test(tokens[i])){const dec=decodeNddff(tokens[i]);if(dec){r.N=dec.N;r.dir=dec.dir;r.windSp=dec.sp;}i++;}if(r.windSp===99&&i<tokens.length&&/^00\d{3}$/.test(tokens[i])){r.windSp=parseInt(tokens[i].slice(2),10);i++;}while(i<tokens.length){const t=tokens[i];if(t==='333'||t==='222'||t==='444'||t==='555'||t==='666')break;if(!/^\d{5}$/.test(t)){i++;continue;}const k=t[0];if(k==='1')r.T=decodeTemp(t);else if(k==='2'){if(t[1]==='9'){const rh=parseInt(t.slice(2),10);if(!isNaN(rh))r.RH=rh;}else r.Td=decodeTemp(t);}else if(k==='3')r.Pstn=decodePressure(t);else if(k==='4')r.Pmsl=decodePressure(t);else if(k==='5')r.tendency=decodePressureTendency(t);else if(k==='6')r.precip=decodePrecip(t);else if(k==='7'){r.ww=t.slice(1,3);r.W1=t[3];r.W2=t[4];}else if(k==='8'){r.Nh=t[1];r.CL=t[2];r.CM=t[3];r.CH=t[4];}i++;}if(i<tokens.length&&tokens[i]==='333'){i++;while(i<tokens.length){const t=tokens[i];if(t==='222'||t==='444'||t==='555'||t==='666')break;if(/^1\d{4}$/.test(t))r.Tmax=decodeTemp(t);else if(/^2\d{4}$/.test(t))r.Tmin=decodeTemp(t);else if(/^6\d{4}$/.test(t))r.precip24=decodePrecip(t);i++;}}return r;}
+function renderSynopReport(rep){const wxParts=[];if(rep.ww&&T_WW[rep.ww])wxParts.push(`Now: ${T_WW[rep.ww]}`);if(rep.W1&&T_W[rep.W1]&&rep.W1!=='/')wxParts.push(`Past: ${T_W[rep.W1]}`);if(rep.W2&&T_W[rep.W2]&&rep.W2!=='/'&&rep.W2!==rep.W1)wxParts.push(`Past 2: ${T_W[rep.W2]}`);const cloudParts=[];if(rep.CL&&T_CL[rep.CL]&&rep.CL!=='0'&&rep.CL!=='/')cloudParts.push(`Low: ${T_CL[rep.CL]}`);if(rep.CM&&T_CM[rep.CM]&&rep.CM!=='0'&&rep.CM!=='/')cloudParts.push(`Mid: ${T_CM[rep.CM]}`);if(rep.CH&&T_CH[rep.CH]&&rep.CH!=='0'&&rep.CH!=='/')cloudParts.push(`High: ${T_CH[rep.CH]}`);const tempClass=(rep.T!==null&&rep.T>=35)?'alert':((rep.T!==null&&rep.T<=5)?'warn':'');const windClass=(rep.windSp!==null&&rep.windSp>=25)?'alert':((rep.windSp!==null&&rep.windSp>=15)?'warn':'');const visKm=rep.visText&&/^\d/.test(rep.visText)?parseFloat(rep.visText):null;const visClass=visKm!==null?(visKm<3?'alert':(visKm<8?'warn':'')):'';const windDisp=(rep.dir==='Calm')?'Calm':(rep.windSp!==null?`${dirCardinal(rep.dir)} ${rep.windSp} ${rep.windUnits||''}`:'—');const fields=[];fields.push(`<div class="synop-field"><span class="k">Vis</span><span class="v ${visClass}">${rep.visText||'—'}</span></div>`);fields.push(`<div class="synop-field"><span class="k">Wind</span><span class="v ${windClass}">${windDisp}</span></div>`);fields.push(`<div class="synop-field"><span class="k">Cloud</span><span class="v">${T_N[rep.N]||'—'}</span></div>`);fields.push(`<div class="synop-field"><span class="k">Cld base</span><span class="v">${T_H[rep.h]||'—'}</span></div>`);fields.push(`<div class="synop-field"><span class="k">Temp</span><span class="v ${tempClass}">${rep.T!==null?rep.T+' °C':'—'}</span></div>`);if(rep.Td!==null)fields.push(`<div class="synop-field"><span class="k">Dew</span><span class="v">${rep.Td} °C</span></div>`);if(rep.RH!==null)fields.push(`<div class="synop-field"><span class="k">RH</span><span class="v">${rep.RH}%</span></div>`);if(rep.Pmsl!==null)fields.push(`<div class="synop-field"><span class="k">QNH</span><span class="v">${rep.Pmsl.toFixed(1)} hPa</span></div>`);else if(rep.Pstn!==null)fields.push(`<div class="synop-field"><span class="k">QFE</span><span class="v">${rep.Pstn.toFixed(1)} hPa</span></div>`);if(rep.tendency){const ch=rep.tendency.change;const tendStr=ch!==null?`${ch>=0?'+':''}${ch.toFixed(1)} hPa/3h`:(rep.tendency.desc||'—');fields.push(`<div class="synop-field"><span class="k">Tendency</span><span class="v" title="${escapeHtml(rep.tendency.desc||'')}">${tendStr}</span></div>`);}if(rep.precip&&rep.precip.amount!==null){const lbl=rep.precip.periodDesc?`${rep.precip.amount} mm / ${rep.precip.periodDesc}`:`${rep.precip.amount} mm`;fields.push(`<div class="synop-field"><span class="k">Precip</span><span class="v">${lbl}</span></div>`);}if(rep.Tmax!==null)fields.push(`<div class="synop-field"><span class="k">Max T</span><span class="v">${rep.Tmax} °C</span></div>`);if(rep.Tmin!==null)fields.push(`<div class="synop-field"><span class="k">Min T</span><span class="v">${rep.Tmin} °C</span></div>`);if(rep.precip24&&rep.precip24.amount!==null)fields.push(`<div class="synop-field"><span class="k">24h precip</span><span class="v">${rep.precip24.amount} mm</span></div>`);const wxBlock=(wxParts.length||cloudParts.length)?`<div class="synop-wx">${[...wxParts,...cloudParts].join(' · ')}</div>`:'';const stationType=rep.iX?(rep.iX>='4'?'AUTO':'MANNED'):'';return`<div class="synop-station-block"><div class="synop-block-head"><span>WMO ${rep.iiiii}</span><span class="iiiii">${stationType}</span></div>${fields.join('')}${wxBlock}</div>`;}
+const SYNOP_SOURCES=[
+  {key:'tnca-si',flag:ICAO_FLAGS.TNCA,label:'TNCA · SINU50',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sinu50.tnca..txt'},
+  {key:'tnca-sm',flag:ICAO_FLAGS.TNCA,label:'TNCA · SMNU50',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smnu50.tnca..txt'},
+  {key:'tncc-si',flag:ICAO_FLAGS.TNCC,label:'TNCC · SICA20',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sica20.tncc..txt'},
+  {key:'tncc-sm',flag:ICAO_FLAGS.TNCC,label:'TNCC · SMCA01',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smca01.tncc..txt'}
+];
+function buildSynopTable(){synopTbody.innerHTML='';SYNOP_SOURCES.forEach(s=>{const tr=document.createElement('tr');tr.dataset.key=s.key;tr.innerHTML=`<td class="station"><span class="synop-flag">${s.flag}</span>${s.label}</td><td class="time">--</td><td class="code">${s.type==='SI'?'SI · Intermediate':'SM · Main'}</td><td class="rep-count">—</td>`;const dr=document.createElement('tr');dr.className='synop-decoded-row';dr.dataset.key=s.key;dr.innerHTML=`<td colspan="4"><div class="synop-decoded"></div></td>`;const rr=document.createElement('tr');rr.className='synop-raw-row';rr.dataset.key=s.key;rr.innerHTML=`<td colspan="4"><span class="synop-raw-text"></span></td>`;synopTbody.appendChild(tr);synopTbody.appendChild(dr);synopTbody.appendChild(rr);});}
+function renderSynopRow(source,rawText){const text=sanitize(rawText);const tr=synopTbody.querySelector(`tr[data-key="${source.key}"]:not(.synop-raw-row):not(.synop-decoded-row)`);const dr=synopTbody.querySelector(`tr.synop-decoded-row[data-key="${source.key}"]`);const rr=synopTbody.querySelector(`tr.synop-raw-row[data-key="${source.key}"]`);if(!tr||!dr||!rr)return;const tds=tr.querySelectorAll('td');const parsed=parseSynopBulletin(text);tds[1].textContent=parsed.bulletinTime||'--';tds[3].textContent=parsed.reports.length?`${parsed.reports.length} stn`:'—';const decodedContainer=dr.querySelector('.synop-decoded');if(parsed.reports.length){decodedContainer.innerHTML=parsed.reports.map(renderSynopReport).join('');}else{decodedContainer.innerHTML='<div style="padding:10px;color:var(--muted);font-family:var(--cond);letter-spacing:1px;text-transform:uppercase;font-size:12px;">No decodable reports in bulletin</div>';}rr.querySelector('.synop-raw-text').textContent=text||'(empty)';}
+async function loadSynopRow(source){try{const out=await fetchWithRetries(source.url);if(out.ok){renderSynopRow(source,out.text);if(synopUpdatedEl)synopUpdatedEl.textContent=`SYNOP last updated: ${nowStamp()}`;}}catch(e){console.error('SYNOP',source.key,e);}}
+async function loadAllSynops(){await Promise.all(SYNOP_SOURCES.map(loadSynopRow));}
+
+/* TEST MODE */
+let testInterval=null;
+function makeTestSamples(){const d=new Date();const ddhh=`${pad(d.getUTCDate())}${pad(d.getUTCHours())}`;const mm0=pad(Math.floor(d.getUTCMinutes()/10)*10);const t0=`${ddhh}${mm0}Z`;return[{TNCA:`TNCA ${t0} 35035G50KT 9999 VCSH FEW013CB 28/23 Q1011`,TNCB:`TNCB ${t0} 34020G35KT 0400 +TSRA FEW020CB BKN030 26/24 Q0980`,TNCC:`TNCC ${t0} 12045G60KT 0500 +TSRA FEW016TCU OVC025 27/25 Q1000`,TNCM:`TNCM ${t0} 20015G35KT 0800 SHRA FEW020TCU BKN018 25/23 Q0995`,SVMI:`SVMI ${t0} 30025G45KT 9999 VCSH FEW020CB BKN030 28/26 Q1002`,SVVA:`SVVA ${t0} 04010G20KT 0300 -SHRA FEW020 BKN025 22/21 Q1008`}];}
+const TAF_TEST={TNCA:'TAF TNCA 011730Z 0118/0218 35025G40KT 9999 FEW020CB TX31/0215Z TN24/0206Z TEMPO 0120/0124 35035G55KT 0500 +TSRA FEW013CB BKN020 BECMG 0202/0204 12015KT 9999 FEW025 FM020600 09010KT 9999 SCT030',TNCB:'TAF TNCB 011730Z 0118/0218 34018G30KT 9999 SCT025 TX29/0214Z TN23/0207Z TEMPO 0119/0122 0400 +TSRA FEW018CB BKN025 PROB30 TEMPO 0122/0124 0800 SHRA SCT020',TNCC:'TAF TNCC 011730Z 0118/0218 12020G35KT 9999 SCT020 TX30/0215Z TN24/0206Z TEMPO 0120/0124 0500 TSRA FEW016TCU OVC025'};
+function applyTestSamples(s){STATIONS.forEach(icao=>{const r=s[icao]||`${icao} ${pad(new Date().getUTCDate())}${pad(new Date().getUTCHours())}00Z 09010KT 9999 FEW020 28/24 Q1013`;window._renderMetarHooked(icao,r);});TAF_ICAOS.forEach(icao=>TAF_TEST[icao]&&renderTafRow(icao,TAF_TEST[icao]));if(lastUpdatedEl)lastUpdatedEl.textContent=`Test data: ${nowStamp()}`;}
+function startTest(){if(testInterval)clearInterval(testInterval);applyTestSamples(makeTestSamples()[0]);testInterval=setInterval(()=>applyTestSamples(makeTestSamples()[0]),4000);}
+function stopTest(){if(testInterval){clearInterval(testInterval);testInterval=null;}}
+
+/* TABS */
+const tabs=document.querySelectorAll('.tab-btn');
+const panels={metar:$('tab-metar'),taf:$('tab-taf'),synop:$('tab-synop'),stations:$('tab-stations'),atc:$('tab-atc'),ops:$('tab-ops'),obs:$('tab-obs'),weather:$('tab-weather')};
+async function switchTab(name){const currentPanel=Object.values(panels).find(p=>p&&!p.classList.contains('hidden'));tabs.forEach(t=>{const isTarget=t.dataset.tab===name;if(isTarget&&!t.classList.contains('active')){t.classList.add('activating');setTimeout(()=>t.classList.remove('activating'),600);}t.classList.toggle('active',isTarget);});const targetPanel=panels[name];if(currentPanel&&currentPanel!==targetPanel){currentPanel.classList.add('leaving');setTimeout(()=>{Object.entries(panels).forEach(([k,p])=>{if(p){p.classList.toggle('hidden',k!==name);p.classList.remove('leaving');}});},200);}else{Object.entries(panels).forEach(([k,p])=>p&&p.classList.toggle('hidden',k!==name));}if(!loadedTabs[name]){loadedTabs[name]=true;if(name==='taf')await loadAllTafs();else if(name==='synop')await loadAllSynops();else if(name==='stations')await fetchStationsData();else if(name==='weather')await loadWeather();else if(name==='ops')renderOps();}
+if(name==='ops')renderOps();if(name==='stations'){setTimeout(()=>{if(map&&!$('stationsMapCard').classList.contains('hidden'))map.invalidateSize();},250);}}
+tabs.forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+
+/* BUTTONS */
+$('metar-refresh-btn').addEventListener('click',refreshAllMetars);
+$('refresh-btn').addEventListener('click',()=>{updateVis();refreshAllMetars();if(loadedTabs.taf)loadAllTafs();if(loadedTabs.synop)loadAllSynops();});
+$('taf-refresh-btn').addEventListener('click',async()=>{const b=$('taf-refresh-btn');b.disabled=true;await loadAllTafs();setTimeout(()=>b.disabled=false,800);});
+$('synop-refresh-btn').addEventListener('click',async()=>{const b=$('synop-refresh-btn');b.disabled=true;await loadAllSynops();setTimeout(()=>b.disabled=false,800);});
+$('vis-refresh-btn').addEventListener('click',async()=>{const b=$('vis-refresh-btn');b.disabled=true;await updateVis();setTimeout(()=>b.disabled=false,800);});
+$('mute-btn').addEventListener('click',()=>{mute=!mute;const b=$('mute-btn');b.textContent=mute?'🔇 Unmute':'🔊 Mute';b.setAttribute('aria-pressed',String(mute));});
+$('test-btn').addEventListener('click',()=>{testMode=!testMode;$('test-btn').textContent=testMode?'⚗ Exit':'⚗ Test';testMode?startTest():stopTest();});
+$('night-btn').addEventListener('click',()=>{const b=$('night-btn');const isNight=document.documentElement.classList.toggle('night');b.setAttribute('aria-pressed',String(isNight));b.textContent=isNight?'☀ Day':'🌙 Night';try{localStorage.setItem('rwc-night',isNight?'1':'0');}catch(e){}});
+try{if(localStorage.getItem('rwc-night')==='1'){document.documentElement.classList.add('night');const b=$('night-btn');b.setAttribute('aria-pressed','true');b.textContent='☀ Day';}}catch(e){}
+$('metar').addEventListener('click',async e=>{const td=e.target.closest('td');if(!td)return;const tr=td.closest('tr');if(!tr||tr.classList.contains('raw'))return;const text=td.textContent.trim();if(!text)return;try{await navigator.clipboard.writeText(text);td.classList.add('flash-blue');setTimeout(()=>td.classList.remove('flash-blue'),600);}catch(e){}});
+setInterval(()=>{if(!testMode)refreshAllMetars();},METAR_REFRESH_MS);
+setInterval(()=>{if(!testMode)updateVis();},VIS_REFRESH_MS);
+
+/* STATIONS */
+const API_BASE='https://curacao-weather-api.generast.workers.dev/';
+const COORDS={"Curaçao International Airport":{lat:12.18889,lon:-68.95972},"Curacao International Airport":{lat:12.18889,lon:-68.95972},"Seru Mahuma":{lat:12.18330,lon:-68.93330},"Santa Maria":{lat:12.16720,lon:-68.93920},"Savonet":{lat:12.35060,lon:-69.10610},"Soto":{lat:12.26670,lon:-69.10000},"Spaanse Water":{lat:12.06730,lon:-68.85010},"Steenrijk":{lat:12.09788,lon:-68.91214}};
+const ISLAND_CENTER={lat:12.16957,lon:-68.99002};
+const ISLAND_BOUNDS=[[11.9177,-69.5311],[12.5478,-68.3707]];
+const MAP_EXCLUDE=new Set(['Klein Kwartier','Punda']);
+let currentData=[],map=null,markersLayer=null;
+function safeNum(v){return(v===null||v===undefined||v==='')?null:Number(v);}
+function parseIso(s){if(!s)return null;const d=new Date(s);return isNaN(d)?null:d;}
+function sameLocalDate(a,b){if(!a||!b)return false;return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+function evaluateStation(row){const last=parseIso(row.last_updated_iso||row.last_updated);const isStaleDate=!last||!sameLocalDate(new Date(),last);return{alerts:[],severity:isStaleDate?3:0,isStaleDate};}
+function islandFlagFor(name){const n=(name||'').toLowerCase();if(n.includes('aruba')||n.includes('oranjestad')||n.includes('beatrix'))return'🇦🇼';if(n.includes('bonaire')||n.includes('flamingo')||n.includes('rincon')||n.includes('kralendijk'))return'🇧🇶';return'🇨🇼';}
+function windRoseSvg(dir,sp){const id=++svgIdCounter;if(typeof dir!=='number'||!isFinite(dir))return`<svg viewBox="0 0 84 84" class="wind-rose"><circle cx="42" cy="42" r="30" stroke="rgba(85,193,255,0.15)" stroke-width="1.5" fill="none"/><text x="42" y="47" fill="rgba(106,138,170,0.6)" font-size="13" text-anchor="middle" font-family="Space Mono,monospace">—</text></svg>`;const speed=(typeof sp==='number'&&isFinite(sp))?sp:null;const len=speed?Math.min(27,Math.max(6,(speed/20)*27)):10;const col=speed>=25?'#ff5f5f':(speed>=15?'#f59e0b':'#3fcf82');const toDeg=(dir+180)%360;return`<svg viewBox="0 0 84 84" class="wind-rose"><circle cx="42" cy="42" r="30" stroke="rgba(85,193,255,0.15)" stroke-width="1.5" fill="none"/><g transform="translate(42,42) rotate(${toDeg})"><line x1="0" y1="0" x2="0" y2="${-len}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/><polygon points="0,${-(len+7)} -4,${-len} 4,${-len}" fill="${col}"/><circle cx="0" cy="0" r="3" fill="${col}" fill-opacity="0.7"/></g><text x="42" y="75" fill="rgba(200,230,255,0.7)" font-size="11" text-anchor="middle" font-family="Space Mono,monospace">${speed!==null?Math.round(speed)+' kn':'—'}</text></svg>`;}
+function extractCoords(row){let lat=null,lon=null;for(const k of['latitude','lat','lat_deg','lat_dd']){if(k in row&&row[k]!=null){lat=row[k];break;}}for(const k of['longitude','lon','lon_deg','lon_dd','lng']){if(k in row&&row[k]!=null){lon=row[k];break;}}if(lat==null&&row.location?.lat)lat=row.location.lat;if(lon==null&&row.location?.lon)lon=row.location.lon;lat=lat!=null?Number(lat):null;lon=lon!=null?Number(lon):null;if(!isFinite(lat))lat=null;if(!isFinite(lon))lon=null;if(lat==null||lon==null){const name=(row.station||'').trim();if(COORDS[name]){lat=COORDS[name].lat;lon=COORDS[name].lon;}}return(lat!=null&&lon!=null)?{lat,lon}:null;}
+function initMap(){if(map)return;map=L.map('map',{zoomControl:true}).setView([ISLAND_CENTER.lat,ISLAND_CENTER.lon],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(map);markersLayer=L.layerGroup().addTo(map);try{map.fitBounds(ISLAND_BOUNDS,{padding:[40,40]});}catch(e){}}
+function markerColor(sev){return sev===3?'#ffb3c7':(sev===2?'#ef4444':(sev===1?'#f59e0b':'#3fcf82'));}
+function addMarkers(rows){if(!map)initMap();markersLayer.clearLayers();rows.forEach(r=>{if(MAP_EXCLUDE.has((r.station||'').trim()))return;const c=extractCoords(r);if(!c)return;const ev=evaluateStation(r);const marker=L.circleMarker([c.lat,c.lon],{radius:10,fillColor:markerColor(ev.severity),color:'#00000022',weight:1,fillOpacity:0.9});const wd=r.wind_direction_deg!=null?Number(r.wind_direction_deg):null;const ws=r.wind_speed_knots!=null?Number(r.wind_speed_knots):null;const flag=islandFlagFor(r.station);const popup=`<div style="display:flex;gap:10px;align-items:flex-start;min-width:240px;background:rgba(6,24,42,0.98);padding:12px;border-radius:8px;">${windRoseSvg(wd,ws)}<div style="font-family:'Barlow Condensed',sans-serif;color:#fff;"><strong style="font-size:15px;color:#55c1ff;">${flag} ${escapeHtml(r.station||'—')}</strong><br/><small style="color:#8aabcc;">${escapeHtml(r.last_updated||'—')}</small><hr style="margin:8px 0;border:none;border-top:1px solid rgba(55,130,200,0.15)"/><div style="font-size:13px;"><strong>Temp:</strong> ${r.temperature_c!=null?r.temperature_c.toFixed(1)+' °C':'—'}</div><div style="font-size:13px;"><strong>Wind:</strong> ${ws!=null?ws+' kn':'—'} (${r.wind_direction_text||'—'})</div></div></div>`;marker.bindPopup(popup,{maxWidth:380});marker.addTo(markersLayer);});}
+function renderStations(rows){const list=$('stationsList');if(!rows.length){list.innerHTML='<div style="padding:20px;color:var(--muted);">No stations available</div>';return;}let alertCount=0,staleCount=0,mostRecent=null;list.innerHTML=rows.map(r=>{const ev=evaluateStation(r);if(ev.alerts.length)alertCount++;if(ev.isStaleDate)staleCount++;if(!mostRecent&&r.last_updated)mostRecent=r.last_updated;const temp=r.temperature_c!==null?r.temperature_c.toFixed(1)+'°C':'—';const wkn=r.wind_speed_knots!==null?r.wind_speed_knots:null;const wdg=r.wind_direction_deg!==null?Number(r.wind_direction_deg):null;const wt=r.wind_direction_text||r.wind_direction||'—';const flag=islandFlagFor(r.station);return`<div class="station-row"><div class="station-top"><div style="display:flex;gap:12px;align-items:center;">${windRoseSvg(wdg,wkn)}<div><div class="station-name"><span class="station-flag">${flag}</span>${escapeHtml(r.station)}</div><div class="station-time">${escapeHtml(r.last_updated||'—')}</div></div></div><div style="display:flex;gap:7px;"><div class="param"><span class="label">Temp</span><span class="value">${temp}</span></div><div class="param"><span class="label">Wind</span><span class="value">${wkn!==null?wkn+' kn':'—'}</span></div></div></div><div class="params-row"><div class="param"><span class="label">Heat idx</span><span class="value" style="font-size:14px;">${r.heat_index_c!=null?r.heat_index_c.toFixed(1)+'°':'—'}</span></div><div class="param"><span class="label">Humidity</span><span class="value" style="font-size:14px;">${r.humidity_percent!=null?r.humidity_percent+'%':'—'}</span></div><div class="param"><span class="label">Direction</span><span class="value" style="font-size:14px;">${wt}${wdg!==null?' ('+wdg+'°)':''}</span></div><div class="param"><span class="label">Rain today</span><span class="value" style="font-size:14px;">${r.rain_today_mm!=null?r.rain_today_mm+' mm':'—'}</span></div></div></div>`;}).join('');$('totalCount').textContent=rows.length;$('alertCount').textContent=alertCount;$('staleCount').textContent=staleCount;$('mostRecent').textContent=mostRecent||'—';}
+async function fetchStationsData(){try{let rows=[];try{const res=await fetch(API_BASE,{cache:'no-store'});if(!res.ok)throw new Error('Network '+res.status);rows=await res.json();}catch(err){const ts=new Date().toISOString();rows=[{station:'Curaçao International Airport',temperature_c:29.1,heat_index_c:31.0,humidity_percent:74,wind_speed_knots:12,wind_direction_deg:140,wind_direction_text:'SE',rain_today_mm:0,last_updated:ts},{station:'Seru Mahuma',temperature_c:28.4,heat_index_c:29.5,humidity_percent:70,wind_speed_knots:8,wind_direction_deg:160,wind_direction_text:'SSE',rain_today_mm:0,last_updated:ts},{station:'Santa Maria',temperature_c:29.6,heat_index_c:31.2,humidity_percent:72,wind_speed_knots:10,wind_direction_deg:150,wind_direction_text:'SSE',rain_today_mm:0,last_updated:ts},{station:'Savonet',temperature_c:27.2,heat_index_c:27.8,humidity_percent:68,wind_speed_knots:6,wind_direction_deg:120,wind_direction_text:'ESE',rain_today_mm:0,last_updated:ts}];}rows.forEach(r=>{r.temperature_c=safeNum(r.temperature_c);r.heat_index_c=safeNum(r.heat_index_c);r.humidity_percent=safeNum(r.humidity_percent);r.wind_speed_knots=safeNum(r.wind_speed_knots);r.wind_direction_deg=r.wind_direction_deg!=null?safeNum(r.wind_direction_deg):(r.wind_direction&&!isNaN(Number(r.wind_direction))?Number(r.wind_direction):null);r.rain_today_mm=safeNum(r.rain_today_mm);if(r.last_updated_iso)r.last_updated=r.last_updated_iso;});currentData=rows;const ts='Last fetched: '+new Date().toLocaleString();$('stationsLastFetched').textContent=ts;$('mapLastFetched').textContent=ts;renderStations(rows);if(map)addMarkers(rows);}catch(e){console.error('stations',e);}}
+$('toggleMap').addEventListener('click',()=>{const mc=$('stationsMapCard');const hidden=mc.classList.contains('hidden');if(hidden){mc.classList.remove('hidden');initMap();addMarkers(currentData);try{map.setView([ISLAND_CENTER.lat,ISLAND_CENTER.lon],11);setTimeout(()=>map.invalidateSize(),200);}catch(e){}}else mc.classList.add('hidden');});
+$('mapSearch').addEventListener('input',()=>{const q=$('mapSearch').value.toLowerCase();addMarkers(currentData.filter(r=>!q||(r.station&&r.station.toLowerCase().includes(q))));});
+
+/* ATC */
+document.querySelectorAll('.atc-player').forEach(card=>{const url=card.dataset.stream;const btn=card.querySelector('.atc-play-btn');const icon=card.querySelector('.atc-play-icon');const txt=card.querySelector('.atc-status-text');const vol=card.querySelector('.atc-vol-slider');const audio=new Audio();audio.preload='none';audio.crossOrigin='anonymous';audio.volume=vol.value/100;function setState(s){card.classList.remove('loading','playing','error');if(s)card.classList.add(s);icon.textContent=s==='loading'?'◐':(s==='playing'?'■':'▶');txt.textContent=s==='loading'?'Connecting':(s==='playing'?'Live':(s==='error'?'Error':'Idle'));}audio.addEventListener('playing',()=>setState('playing'));audio.addEventListener('waiting',()=>setState('loading'));audio.addEventListener('pause',()=>{if(!audio.ended)setState(null);});audio.addEventListener('error',()=>setState('error'));audio.addEventListener('stalled',()=>setState('loading'));btn.addEventListener('click',()=>{if(audio.paused){audio.src=url+'?t='+Date.now();setState('loading');audio.play().catch(()=>setState('error'));}else{audio.pause();audio.src='';setState(null);}});vol.addEventListener('input',()=>audio.volume=vol.value/100);});
+
+/* INIT */
+buildMetarTable();
+buildTafTable();
+buildSynopTable();
+loadedTabs.metar=true;
+(async function init(){try{Promise.allSettled([updateVis(),refreshAllMetars()]).then(()=>{const any=STATIONS.some(icao=>metarState[icao]?.lastRaw);if(!any){console.warn('No live data — test mode');testMode=true;startTest();$('test-btn').textContent='⚗ Exit';}});}catch(e){console.error('init',e);testMode=true;startTest();}})();
+
+
+/* ════════════════════════════════════════════════════
+   OPS — RUNWAY COMPASS, BIG METAR, SPECI DETECTION
+   ════════════════════════════════════════════════════ */
+
+const RUNWAYS = {
+  TNCC: {ids:['11','29'], hdgs:[110,290], name:'Hato'},
+  TNCA: {ids:['11','29'], hdgs:[110,290], name:'Beatrix'},
+  TNCB: {ids:['10','28'], hdgs:[100,280], name:'Flamingo'}
+};
+const OPS_STATIONS = ['TNCC','TNCB','TNCA'];
+let speciState = {};  // per-icao SPECI tracking
+
+function activeRunway(icao, windDir){
+  const cfg = RUNWAYS[icao]; if(!cfg) return null;
+  if(typeof windDir !== 'number' || isNaN(windDir)){
+    return {id:cfg.ids[0], hdg:cfg.hdgs[0], headwind:0, crosswind:0};
+  }
+  let best = null;
+  cfg.ids.forEach((id,i)=>{
+    const hdg = cfg.hdgs[i];
+    let diff = ((windDir - hdg + 540) % 360) - 180;
+    const headwind = Math.cos(diff * Math.PI / 180);
+    if(!best || headwind > best.headwind){
+      best = {id, hdg, headwindCos:headwind, diff:Math.abs(diff)};
+    }
+  });
+  return best;
+}
+
+function compassSvg(icao, windDir, windKt, gustKt){
+  const cfg = RUNWAYS[icao]; if(!cfg) return '';
+  const sz = 300, cx = sz/2, cy = sz/2, r = sz/2 - 30;
+  const hasWind = typeof windDir === 'number' && !isNaN(windDir) && windKt!=null;
+  const active = hasWind ? activeRunway(icao, windDir) : null;
+  const speed = (windKt||0);
+  const gust = (gustKt||0);
+  const col = (gust >= 35 || speed >= 25) ? '#ff5f5f' : (speed >= 15 ? '#f59e0b' : '#3fcf82');
+
+  // Cardinal labels
+  let labels = '';
+  ['N','E','S','W'].forEach((d,i)=>{
+    const a = (i*90 - 90) * Math.PI / 180;
+    const x = cx + (r+18)*Math.cos(a);
+    const y = cy + (r+18)*Math.sin(a);
+    labels += `<text x="${x}" y="${y+5}" text-anchor="middle" fill="rgba(200,225,255,0.7)" font-family="Barlow Condensed,sans-serif" font-size="14" font-weight="700">${d}</text>`;
+  });
+
+  // Tick marks every 10°
+  let ticks = '';
+  for(let deg=0; deg<360; deg+=10){
+    const a = (deg-90) * Math.PI/180;
+    const big = deg % 30 === 0;
+    const x1 = cx + (r-(big?12:6))*Math.cos(a);
+    const y1 = cy + (r-(big?12:6))*Math.sin(a);
+    const x2 = cx + r*Math.cos(a);
+    const y2 = cy + r*Math.sin(a);
+    ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(85,193,255,${big?0.5:0.2})" stroke-width="${big?1.5:1}"/>`;
+  }
+
+  // Runway markers (a thick line through the centre)
+  const rwy0 = cfg.hdgs[0], rwy1 = cfg.hdgs[1];
+  const a0 = (rwy0-90)*Math.PI/180;
+  const rx1 = cx + (r-20)*Math.cos(a0);
+  const ry1 = cy + (r-20)*Math.sin(a0);
+  const rx2 = cx - (r-20)*Math.cos(a0);
+  const ry2 = cy - (r-20)*Math.sin(a0);
+  const rwyLine = `<line x1="${rx1}" y1="${ry1}" x2="${rx2}" y2="${ry2}" stroke="rgba(255,255,255,0.18)" stroke-width="22" stroke-linecap="round"/>
+                   <line x1="${rx1}" y1="${ry1}" x2="${rx2}" y2="${ry2}" stroke="rgba(255,255,255,0.55)" stroke-width="2" stroke-dasharray="4 6"/>`;
+
+  // Runway end labels
+  const lx1 = cx + (r-8)*Math.cos(a0);
+  const ly1 = cy + (r-8)*Math.sin(a0);
+  const lx2 = cx - (r-8)*Math.cos(a0);
+  const ly2 = cy - (r-8)*Math.sin(a0);
+  const isActive0 = active && active.id===cfg.ids[0];
+  const isActive1 = active && active.id===cfg.ids[1];
+  const rwyLabels = `
+    <circle cx="${lx1}" cy="${ly1}" r="14" fill="${isActive0?'rgba(63,207,130,0.7)':'rgba(255,255,255,0.15)'}" stroke="${isActive0?'#3fcf82':'rgba(255,255,255,0.4)'}" stroke-width="2"/>
+    <text x="${lx1}" y="${ly1+5}" text-anchor="middle" fill="${isActive0?'#fff':'rgba(255,255,255,0.7)'}" font-family="Barlow Condensed,sans-serif" font-size="13" font-weight="800">${cfg.ids[0]}</text>
+    <circle cx="${lx2}" cy="${ly2}" r="14" fill="${isActive1?'rgba(63,207,130,0.7)':'rgba(255,255,255,0.15)'}" stroke="${isActive1?'#3fcf82':'rgba(255,255,255,0.4)'}" stroke-width="2"/>
+    <text x="${lx2}" y="${ly2+5}" text-anchor="middle" fill="${isActive1?'#fff':'rgba(255,255,255,0.7)'}" font-family="Barlow Condensed,sans-serif" font-size="13" font-weight="800">${cfg.ids[1]}</text>`;
+
+  // Wind arrow (from direction → towards centre)
+  let windArrow = '';
+  if(hasWind){
+    const wa = ((windDir+180)%360 - 90)*Math.PI/180;  // wind FROM, so arrow points opposite
+    const len = Math.min(r-26, Math.max(40, (speed/30) * (r-26)));
+    const ax = cx + len*Math.cos(wa);
+    const ay = cy + len*Math.sin(wa);
+    const bx = cx - 12*Math.cos(wa);
+    const by = cy - 12*Math.sin(wa);
+    windArrow = `<line x1="${bx}" y1="${by}" x2="${ax}" y2="${ay}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>
+                 <polygon points="${ax+8*Math.cos(wa)},${ay+8*Math.sin(wa)} ${ax-6*Math.cos(wa-Math.PI/2)},${ay-6*Math.sin(wa-Math.PI/2)} ${ax-6*Math.cos(wa+Math.PI/2)},${ay-6*Math.sin(wa+Math.PI/2)}" fill="${col}"/>`;
+  }
+
+  return `<svg viewBox="0 0 ${sz} ${sz}" class="compass-svg">
+    <defs><radialGradient id="cgrad-${icao}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="rgba(85,193,255,0.05)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#cgrad-${icao})" stroke="rgba(85,193,255,0.25)" stroke-width="1.5"/>
+    ${ticks}
+    ${labels}
+    ${rwyLine}
+    ${rwyLabels}
+    ${windArrow}
+    <circle cx="${cx}" cy="${cy}" r="4" fill="${col}"/>
+    <text x="${cx}" y="${cy+r+25}" text-anchor="middle" fill="rgba(200,225,255,0.65)" font-family="Space Mono,monospace" font-size="11">${cfg.name} · ${cfg.ids.join('/')}</text>
+  </svg>`;
+}
+
+function renderCompass(icao){
+  const st = metarState[icao];
+  if(!st || !st.row) return '';
+  const tds = st.row.querySelectorAll('td');
+  const windText = tds[2] ? tds[2].textContent : '';
+  // Parse "DDDFFKT" or "VRBFFKT" plus optional gust
+  const m = windText.match(/^(?:VRB|(\d{3}))(\d{2,3})(?:G(\d{2,3}))?KT/);
+  let dir = null, sp = null, gust = 0;
+  if(m){
+    dir = m[1] ? parseInt(m[1],10) : null;
+    sp = parseInt(m[2],10);
+    if(m[3]) gust = parseInt(m[3],10);
+  }
+  const active = activeRunway(icao, dir);
+  let headwindKt = '—', crosswindKt = '—';
+  if(active && sp != null && active.headwindCos !== undefined){
+    const headwind = sp * active.headwindCos;
+    const crosswind = Math.abs(sp * Math.sin((active.diff||0) * Math.PI / 180));
+    headwindKt = (headwind >= 0 ? '+' : '') + headwind.toFixed(0) + ' kt';
+    crosswindKt = crosswind.toFixed(0) + ' kt';
+  }
+  const xwClass = (parseFloat(crosswindKt) >= 20) ? 'alert' : (parseFloat(crosswindKt) >= 10 ? 'warn' : '');
+
+  return `<div class="compass-block">
+    <div class="icao-label">${ICAO_FLAGS[icao]||''} ${icao}</div>
+    ${active ? `<div class="runway-active">RWY ${active.id}</div>` : ''}
+    ${compassSvg(icao, dir, sp, gust)}
+    <div class="compass-stats">
+      <div class="compass-stat"><span class="lab">Wind</span><span class="val">${dir!=null?String(dir).padStart(3,'0')+'°':'VRB'} / ${sp!=null?sp+' kt':'—'}</span></div>
+      <div class="compass-stat"><span class="lab">Gust</span><span class="val ${gust>=35?'alert':(gust>=25?'warn':'')}">${gust?gust+' kt':'—'}</span></div>
+      <div class="compass-stat"><span class="lab">Headwind</span><span class="val ok">${headwindKt}</span></div>
+      <div class="compass-stat"><span class="lab">Crosswind</span><span class="val ${xwClass}">${crosswindKt}</span></div>
+    </div>
+  </div>`;
+}
+
+/* ── BIG METAR CARDS (TNCC/TNCB/TNCA) ── */
+function renderMetarBigCard(icao){
+  const st = metarState[icao];
+  if(!st || !st.row || !st.lastRaw){
+    return `<div class="metar-big-card"><div class="mb-head"><div class="mb-icao"><span class="icao-flag">${ICAO_FLAGS[icao]||''}</span>${icao}</div><div class="mb-time">No data</div></div></div>`;
+  }
+  const tds = st.row.querySelectorAll('td');
+  const isSpeci = /^SPECI/i.test(st.lastRaw);
+  return `<div class="metar-big-card ${isSpeci?'has-speci':''}">
+    <div class="mb-head">
+      <div class="mb-icao"><span class="icao-flag">${ICAO_FLAGS[icao]||''}</span>${icao}</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${isSpeci ? '<span class="mb-speci">⚠ SPECI</span>' : ''}
+        <div class="mb-time">${tds[1].textContent}</div>
+      </div>
+    </div>
+    <div class="mb-grid">
+      <div class="mb-cell"><span class="lab">Wind</span><span class="val ${tds[2].classList.contains('alert')?'alert':''}">${tds[2].textContent}</span></div>
+      <div class="mb-cell"><span class="lab">Visibility</span><span class="val ${tds[3].classList.contains('alert')?'alert':''}">${tds[3].textContent}</span></div>
+      <div class="mb-cell"><span class="lab">Weather</span><span class="val ${tds[4].classList.contains('wx-critical')?'alert':''}">${tds[4].textContent}</span></div>
+      <div class="mb-cell"><span class="lab">Cloud</span><span class="val ${tds[5].classList.contains('cloud-critical')?'alert':''}">${tds[5].textContent}</span></div>
+      <div class="mb-cell"><span class="lab">Temp / Dew</span><span class="val">${tds[6].textContent}</span></div>
+      <div class="mb-cell"><span class="lab">QNH</span><span class="val">${tds[7].textContent}</span></div>
+    </div>
+    <div class="mb-raw">${escapeHtml(st.lastRaw)}</div>
+  </div>`;
+}
+
+function renderOps(){
+  const grid = $('compassGrid');
+  const big = $('metarBig');
+  if(grid) grid.innerHTML = OPS_STATIONS.map(renderCompass).join('');

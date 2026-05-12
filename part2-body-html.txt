@@ -1,0 +1,305 @@
+</head>
+<body>
+<div class="speci-banner" id="speciBanner">
+  <span class="close" onclick="document.getElementById('speciBanner').classList.remove('active')">×</span>
+  <span id="speciBannerText">⚠ SPECI ALERT</span>
+</div>
+<div class="page" id="pageRoot">
+
+  <div class="top-row" role="banner">
+    <div class="weather-widget" id="bonaire-vis-widget" tabindex="0" aria-live="polite">
+      <div class="widget-head"><span class="icon">👁</span><span class="title">Bonaire Visibility</span></div>
+      <div class="widget-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div class="vis-wrap">
+            <div id="vis-status" class="status-dot"></div>
+            <div>
+              <div id="vis-value" class="vis-value">—</div>
+              <span id="vis-timestamp" class="timestamp" style="display:none"></span>
+              <span style="display:flex;gap:10px;margin-top:4px;font-family:var(--cond);font-size:10px;letter-spacing:1px;">
+                <span style="color:var(--ok)">● ≥8 km</span>
+                <span style="color:var(--warn)">● 2–8 km</span>
+                <span style="color:var(--alert)">● &lt;2 km</span>
+              </span>
+            </div>
+          </div>
+          <button id="vis-refresh-btn" class="btn-primary" style="font-size:11px;padding:6px 10px;height:30px;">↻</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-block">
+      <div style="text-align:center;margin-bottom:4px;">
+        <div class="header-sub">Caribbean</div>
+        <div class="header-title">Regional Weather Centre</div>
+      </div>
+      <div class="header-clocks">
+        <div class="clock-group"><div class="clock-label">Local</div><div id="local-clock" class="clock-time">--:--:--</div><div id="local-date" class="clock-date">--</div></div>
+        <div class="clock-sep"></div>
+        <div class="clock-group"><div class="clock-label">UTC</div><div id="utc-clock" class="clock-time">--:--:--</div><div id="utc-date" class="clock-date">--</div></div>
+      </div>
+    </div>
+
+    <div class="controls-wrap">
+      <div class="btn-row">
+        <button id="mute-btn" class="btn-ghost" aria-pressed="false">🔊 Mute</button>
+        <button id="test-btn" class="btn-ghost">⚗ Test</button>
+        <button id="night-btn" class="btn-ghost" aria-pressed="false">🌙 Night</button>
+      </div>
+      <button id="refresh-btn" class="btn-primary btn-glow">↻ Refresh All</button>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Data sections">
+    <button class="tab-btn active" data-tab="metar" role="tab"><span class="tab-icon">📡</span>METAR<span class="tab-badge">6</span></button>
+    <button class="tab-btn" data-tab="taf" role="tab"><span class="tab-icon">📊</span>TAF<span class="tab-badge">3</span></button>
+    <button class="tab-btn" data-tab="synop" role="tab"><span class="tab-icon">🌐</span>SYNOP<span class="tab-badge">4</span></button>
+    <button class="tab-btn" data-tab="stations" role="tab"><span class="tab-icon">⊞</span>Stations</button>
+    <button class="tab-btn" data-tab="atc" role="tab"><span class="tab-icon">🎙</span>Live ATC</button>
+    <button class="tab-btn" data-tab="ops" role="tab"><span class="tab-icon">🛬</span>OPS</button>
+    <button class="tab-btn" data-tab="obs" role="tab"><span class="tab-icon">📝</span>OBS</button>
+    <button class="tab-btn" data-tab="weather" role="tab"><span class="tab-icon">🌤</span>Weather</button>
+  </nav>
+
+  <div class="content-wrapper">
+
+    <div id="tab-metar" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">METAR Observations</div>
+        <button id="metar-refresh-btn" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">↻ METAR</button>
+      </div>
+      <div class="table-card">
+        <table aria-label="METAR list">
+          <thead><tr><th>ICAO</th><th>Time (Z)</th><th>Wind</th><th>Vis</th><th>Wx</th><th>Cloud</th><th>Temp / Dew</th><th>QNH (hPa / inHg)</th></tr></thead>
+          <tbody id="metar"></tbody>
+        </table>
+        <div class="status-bar">
+          <span><span class="dot-live"></span><span id="last-updated">METAR last updated: --:--</span></span>
+          <span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(106,138,170,0.5);">Auto-refresh 30s</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-taf" class="tab-panel hidden">
+      <div class="section-header">
+        <div class="section-title">Terminal Aerodrome Forecast</div>
+        <button id="taf-refresh-btn" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">↻ TAF</button>
+      </div>
+      <div class="table-card">
+        <table id="taf-table" aria-label="TAF list">
+          <thead><tr><th>ICAO</th><th>Valid (Z)</th><th>Wind</th><th>Vis</th><th>Wx</th><th>Cloud</th><th>Temp / Dew</th><th>QNH (hPa / inHg)</th></tr></thead>
+          <tbody id="taf"></tbody>
+        </table>
+        <div class="status-bar"><span id="taf-updated" style="color:var(--muted)">TAF last updated: --:--</span></div>
+      </div>
+    </div>
+
+    <div id="tab-synop" class="tab-panel hidden">
+      <div class="section-header">
+        <div class="section-title">SYNOP — WMO FM-12 Decoded</div>
+        <button id="synop-refresh-btn" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">↻ SYNOP</button>
+      </div>
+      <div class="table-card">
+        <table id="synop-table" aria-label="SYNOP list">
+          <thead><tr><th>Source</th><th>Time (Z)</th><th>Bulletin Type</th><th>Stations</th></tr></thead>
+          <tbody id="synop"></tbody>
+        </table>
+        <div class="status-bar"><span id="synop-updated" style="color:var(--muted)">SYNOP last updated: --:--</span></div>
+      </div>
+    </div>
+
+    <div id="tab-stations" class="tab-panel hidden">
+      <section class="stations-card">
+        <div class="stations-header">
+          <div>
+            <div class="stations-title">Stations Dashboard</div>
+            <div class="stations-sub">Live surface observations · Wind roses · Map view</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="stationsLastFetched" style="color:var(--muted);font-size:11px;font-family:var(--mono);">Last fetched: —</span>
+            <button id="toggleMap" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">🗺 Map View</button>
+          </div>
+        </div>
+        <div id="stationsList" class="stations" aria-live="polite">
+          <div style="padding:20px;color:var(--muted);font-family:var(--cond);letter-spacing:1px;text-transform:uppercase;font-size:12px;">Loading stations…</div>
+        </div>
+        <div class="summary">
+          <div class="pill">Total: <span id="totalCount">0</span></div>
+          <div class="pill">Alerts: <span id="alertCount">0</span></div>
+          <div class="pill">Stale: <span id="staleCount">0</span></div>
+          <div class="pill">Most recent: <span id="mostRecent">—</span></div>
+        </div>
+        <div id="stationsMapCard" class="hidden" style="margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <div style="display:flex;gap:10px;align-items:center;">
+              <input id="mapSearch" type="text" class="map-search" placeholder="Filter stations…"/>
+              <span style="color:var(--muted);font-family:var(--mono);font-size:11px;" id="mapLastFetched">Last fetched: —</span>
+            </div>
+            <div class="legend">
+              <div class="row"><div class="dot ok"></div><span>OK</span></div>
+              <div class="row"><div class="dot warn"></div><span>Alert</span></div>
+              <div class="row"><div class="dot danger"></div><span>Critical</span></div>
+              <div class="row"><div class="dot error"></div><span>Stale</span></div>
+            </div>
+          </div>
+          <div class="map-container"><div id="map"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="tab-atc" class="tab-panel hidden">
+      <div class="section-header"><div class="section-title">Live ATC — Curaçao · Aruba · Bonaire</div><a href="https://globe.adsbexchange.com/" target="_blank" rel="noopener" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;text-decoration:none;">✈ ADSB Exchange Live</a></div>
+      <div class="atc-card">
+        <div class="atc-players">
+          <div class="atc-player" data-stream="https://d.liveatc.net/tncc3_twr">
+            <button class="atc-play-btn" aria-label="Play TNCC TWR"><span class="atc-play-icon">▶</span></button>
+            <div class="atc-info"><div class="atc-label"><span class="atc-flag">🇨🇼</span> TNCC · Hato Tower</div><div class="atc-freq">118.300 MHz · Curaçao</div></div>
+            <div class="atc-status"><span class="atc-status-dot"></span><span class="atc-status-text">Idle</span></div>
+            <div class="atc-volume"><span class="atc-vol-icon">🔊</span><input type="range" min="0" max="100" value="80" class="atc-vol-slider"/></div>
+          </div>
+          <div class="atc-player" data-stream="https://d.liveatc.net/tncc3_rdr1">
+            <button class="atc-play-btn" aria-label="Play TNCC APP"><span class="atc-play-icon">▶</span></button>
+            <div class="atc-info"><div class="atc-label"><span class="atc-flag">🇨🇼</span> TNCC · Hato Approach / Radar</div><div class="atc-freq">APP / RDR · Curaçao</div></div>
+            <div class="atc-status"><span class="atc-status-dot"></span><span class="atc-status-text">Idle</span></div>
+            <div class="atc-volume"><span class="atc-vol-icon">🔊</span><input type="range" min="0" max="100" value="80" class="atc-vol-slider"/></div>
+          </div>
+          <div class="atc-player" data-stream="https://d.liveatc.net/tnca">
+            <button class="atc-play-btn" aria-label="Play TNCA TWR"><span class="atc-play-icon">▶</span></button>
+            <div class="atc-info"><div class="atc-label"><span class="atc-flag">🇦🇼</span> TNCA · Aruba Tower</div><div class="atc-freq">118.000 MHz · Queen Beatrix</div></div>
+            <div class="atc-status"><span class="atc-status-dot"></span><span class="atc-status-text">Idle</span></div>
+            <div class="atc-volume"><span class="atc-vol-icon">🔊</span><input type="range" min="0" max="100" value="80" class="atc-vol-slider"/></div>
+          </div>
+          <div class="atc-player" data-stream="https://d.liveatc.net/tncb">
+            <button class="atc-play-btn" aria-label="Play TNCB TWR"><span class="atc-play-icon">▶</span></button>
+            <div class="atc-info"><div class="atc-label"><span class="atc-flag">🇧🇶</span> TNCB · Bonaire Tower</div><div class="atc-freq">118.700 MHz · Flamingo</div></div>
+            <div class="atc-status"><span class="atc-status-dot"></span><span class="atc-status-text">Idle</span></div>
+            <div class="atc-volume"><span class="atc-vol-icon">🔊</span><input type="range" min="0" max="100" value="80" class="atc-vol-slider"/></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- OPS -->
+    <div id="tab-ops" class="tab-panel hidden">
+      <div class="section-header">
+        <div class="section-title">OPS — Aviation Operations · ABC Islands</div>
+        <button id="ops-refresh-btn" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">↻ Refresh OPS</button>
+      </div>
+
+      <!-- Compass roses -->
+      <div class="compass-card" style="margin-bottom:14px;">
+        <div class="compass-grid" id="compassGrid"></div>
+      </div>
+
+      <!-- Big METAR cards -->
+      <div class="metar-big" id="metarBig" style="margin-bottom:14px;"></div>
+
+      <!-- Windy + meteoblue tiles -->
+      <div class="ops-grid">
+        <div class="ops-tile">
+          <div class="ops-tile-head"><span class="ops-tile-title"><span class="ops-tile-icon">🛰</span> Radar</span><a href="https://www.windy.com/?radar,12.169,-68.990,8" target="_blank" rel="noopener" style="color:var(--muted);font-size:11px;">↗</a></div>
+          <div class="ops-tile-body"><iframe src="https://embed.windy.com/embed2.html?lat=12.169&lon=-68.990&detailLat=12.169&detailLon=-68.990&width=650&height=450&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        </div>
+        <div class="ops-tile">
+          <div class="ops-tile-head"><span class="ops-tile-title"><span class="ops-tile-icon">🛰</span> Satellite (IR)</span><a href="https://www.windy.com/?satellite,12.169,-68.990,8" target="_blank" rel="noopener" style="color:var(--muted);font-size:11px;">↗</a></div>
+          <div class="ops-tile-body"><iframe src="https://embed.windy.com/embed2.html?lat=12.169&lon=-68.990&detailLat=12.169&detailLon=-68.990&width=650&height=450&zoom=8&level=surface&overlay=satellite&product=satellite&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        </div>
+        <div class="ops-tile">
+          <div class="ops-tile-head"><span class="ops-tile-title"><span class="ops-tile-icon">☁</span> Clouds</span><a href="https://www.windy.com/?clouds,12.169,-68.990,8" target="_blank" rel="noopener" style="color:var(--muted);font-size:11px;">↗</a></div>
+          <div class="ops-tile-body"><iframe src="https://embed.windy.com/embed2.html?lat=12.169&lon=-68.990&detailLat=12.169&detailLon=-68.990&width=650&height=450&zoom=8&level=surface&overlay=clouds&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        </div>
+        <div class="ops-tile">
+          <div class="ops-tile-head"><span class="ops-tile-title"><span class="ops-tile-icon">🟡</span> Saharan Dust (PM10)</span><a href="https://www.meteoblue.com/en/weather/maps/curacao_caribbean-netherlands_3513090?windAnimation=0&gust=0&satellite=0&cloudsAndPrecipitation=0&temperature=0&sunshine=0&extremeForecastIndex=0&geoloc=fixed&tempunit=C&windunit=kn&lengthunit=metric&zoom=7&autowidth=auto" target="_blank" rel="noopener" style="color:var(--muted);font-size:11px;">↗</a></div>
+          <div class="ops-tile-body"><iframe src="https://www.meteoblue.com/en/weather/maps/widget/curacao_caribbean-netherlands_3513090?windAnimation=0&amp;gust=0&amp;satellite=0&amp;cloudsAndPrecipitation=0&amp;temperature=0&amp;sunshine=0&amp;extremeForecastIndex=0&amp;geoloc=fixed&amp;tempunit=C&amp;windunit=kn&amp;lengthunit=metric&amp;zoom=7&amp;autowidth=auto" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        </div>
+        <div class="ops-tile">
+          <div class="ops-tile-head"><span class="ops-tile-title"><span class="ops-tile-icon">💨</span> Wind Surface</span><a href="https://www.windy.com/?wind,12.169,-68.990,8" target="_blank" rel="noopener" style="color:var(--muted);font-size:11px;">↗</a></div>
+          <div class="ops-tile-body"><iframe src="https://embed.windy.com/embed2.html?lat=12.169&lon=-68.990&detailLat=12.169&detailLon=-68.990&width=650&height=450&zoom=8&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBS -->
+    <div id="tab-obs" class="tab-panel hidden">
+      <div class="section-header"><div class="section-title">OBS — Observations · Briefing · Notes</div></div>
+      <div class="obs-grid">
+        <div>
+          <div class="obs-card" style="margin-bottom:14px;">
+            <div class="obs-card-title">⏱ World Clocks</div>
+            <div class="obs-clocks">
+              <div class="obs-clock"><div class="lbl">Local</div><div class="tm" id="obs-clock-local">--:--:--</div><div class="dt" id="obs-date-local">--</div></div>
+              <div class="obs-clock"><div class="lbl">UTC / Z</div><div class="tm" id="obs-clock-utc">--:--:--</div><div class="dt" id="obs-date-utc">--</div></div>
+              <div class="obs-clock"><div class="lbl">Amsterdam</div><div class="tm" id="obs-clock-ams">--:--:--</div><div class="dt" id="obs-date-ams">--</div></div>
+            </div>
+          </div>
+          <div class="obs-card">
+            <div class="obs-card-title">📅 Calendar</div>
+            <div class="cal-head">
+              <button id="cal-prev">‹ Prev</button>
+              <div class="month-y" id="cal-month-year">—</div>
+              <button id="cal-next">Next ›</button>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+        </div>
+        <div>
+          <div class="obs-card" style="margin-bottom:14px;">
+            <div class="obs-card-title">📋 Briefing</div>
+            <textarea id="briefing-text" class="notes-textarea" placeholder="Briefing notes…&#10;&#10;Pre-flight, mission planning, weather summary, NOTAMs, crew assignments…"></textarea>
+            <div class="notes-actions">
+              <button class="btn-primary" id="briefing-save" style="font-size:11px;height:30px;padding:6px 12px;">💾 Save</button>
+              <button class="btn-ghost" id="briefing-clear">Clear</button>
+            </div>
+            <div class="notes-meta" id="briefing-meta">Not saved</div>
+          </div>
+          <div class="obs-card">
+            <div class="obs-card-title">📝 Notes</div>
+            <textarea id="notes-text" class="notes-textarea" placeholder="Operational notes, observations, log entries…"></textarea>
+            <div class="notes-actions">
+              <button class="btn-primary" id="notes-save" style="font-size:11px;height:30px;padding:6px 12px;">💾 Save</button>
+              <button class="btn-ghost" id="notes-clear">Clear</button>
+            </div>
+            <div class="notes-meta" id="notes-meta">Not saved</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weather (KNMI Bonaire scrape) -->
+    <div id="tab-weather" class="tab-panel hidden">
+      <div class="section-header">
+        <div class="section-title">Weather — KNMI Bonaire · Current · Forecast · Marine</div>
+        <button id="weather-refresh-btn" class="btn-primary" style="font-size:11px;height:30px;padding:6px 12px;">↻ Refresh</button>
+      </div>
+
+      <div class="obs-card" style="margin-bottom:14px;">
+        <div class="obs-card-title">🌡 Bonaire Current Conditions</div>
+        <div class="wx-grid" id="wxCurrent">
+          <div style="grid-column:1/-1;padding:20px;color:var(--muted);text-align:center;font-family:var(--cond);letter-spacing:1px;">Loading from KNMI Bonaire…</div>
+        </div>
+      </div>
+
+      <div class="obs-card" style="margin-bottom:14px;">
+        <div class="obs-card-title">📅 Forecast</div>
+        <div id="wxForecast" class="wx-fc-grid">
+          <div style="grid-column:1/-1;padding:20px;color:var(--muted);text-align:center;font-family:var(--cond);letter-spacing:1px;">Loading forecast…</div>
+        </div>
+      </div>
+
+      <div class="obs-card">
+        <div class="obs-card-title">🌊 Marine</div>
+        <div id="wxMarine" class="wx-grid">
+          <div style="grid-column:1/-1;padding:20px;color:var(--muted);text-align:center;font-family:var(--cond);letter-spacing:1px;">Loading marine data…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">⬡ GNIUS · RWC</div>
+    <div class="footer-note">Bonaire vis from KNMI · Auto-refresh 30s · SYNOP decoded per WMO-No. 306 (FM-12)</div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
