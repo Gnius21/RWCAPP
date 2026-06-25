@@ -620,7 +620,7 @@ function renderMetar(icao,raw){
   const wdir=wdirM?parseInt(wdirM[1]):null;
   const wspdM=p.windBase.match(/\d{3}(\d{2,3})KT/)||p.windBase.match(/^VRB(\d{2,3})KT/);
   const wspd=wspdM?parseInt(wspdM[1]):0;
-  const arr=wdir!=null?`<span style="display:inline-block;transform:rotate(${wdir}deg);margin-right:3px;">↑</span>`:'';
+  const arr=wdir!=null?`<span style="display:inline-block;transform:rotate(${(wdir+180)%360}deg);margin-right:3px;">↑</span>`:'';
   const wCls='mc-val lg'+(p.gust>=35?' alert':(p.gust>=25?' warn':''));
   const we=$('mcw-'+icao);if(we){we.innerHTML=arr+escHtml(p.windBase||'--');we.className=wCls;}
   const ge=$('mcg-'+icao);if(ge){ge.textContent=p.gust?p.gust+' kt':'—';ge.className='mc-val'+(p.gust>=35?' alert':(p.gust>=25?' warn':''));}
