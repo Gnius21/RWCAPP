@@ -103,6 +103,22 @@ a{color:var(--acc);text-decoration:none;}
 .vis-track{height:3px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:5px;overflow:hidden;}
 .vis-fill{height:100%;border-radius:2px;background:var(--ok);transition:width .5s,background .3s;}
 .mc-raw{padding:6px 13px;font-family:var(--mono);font-size:10px;color:rgba(160,195,235,0.45);background:rgba(0,0,0,0.3);border-top:1px solid var(--border);line-height:1.4;word-break:break-all;}
+.mc-name{font-family:var(--cond);font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-top:2px;line-height:1;}
+.mc-age{font-family:var(--cond);font-size:9px;color:var(--muted);margin-left:5px;font-weight:400;letter-spacing:.5px;opacity:.7;}
+.mc-flcat{font-family:var(--cond);font-weight:800;font-size:10px;letter-spacing:1.5px;padding:2px 7px;border-radius:4px;text-transform:uppercase;opacity:0;transition:opacity .3s;}
+.mc-flcat.VFR{opacity:1;background:rgba(63,207,130,0.12);border:1px solid rgba(63,207,130,0.5);color:#3fcf82;}
+.mc-flcat.MVFR{opacity:1;background:rgba(27,124,255,0.12);border:1px solid rgba(27,124,255,0.5);color:#8bb4ff;}
+.mc-flcat.IFR{opacity:1;background:rgba(255,95,95,0.12);border:1px solid rgba(255,95,95,0.5);color:#ff5f5f;animation:ifrpls 1.5s ease-in-out infinite;}
+.mc-flcat.LIFR{opacity:1;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.5);color:#c084fc;animation:ifrpls 1.5s ease-in-out infinite;}
+@keyframes ifrpls{0%,100%{opacity:1}50%{opacity:.45}}
+.metar-summary-bar{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch;}
+.msb-pill{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--border);border-radius:9px;background:rgba(5,18,34,0.9);font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:1px;}
+.msb-icao{color:var(--acc);}
+.msb-cat{font-size:9px;letter-spacing:1px;padding:1px 5px;border-radius:3px;font-weight:800;}
+.msb-cat.VFR{color:#3fcf82;border:1px solid rgba(63,207,130,0.4);}
+.msb-cat.MVFR{color:#8bb4ff;border:1px solid rgba(27,124,255,0.45);}
+.msb-cat.IFR{color:#ff5f5f;border:1px solid rgba(255,95,95,0.45);animation:ifrpls 1.5s ease-in-out infinite;}
+.msb-cat.LIFR{color:#c084fc;border:1px solid rgba(168,85,247,0.45);animation:ifrpls 1.5s ease-in-out infinite;}
 
 /* TABLE (TAF/SYNOP) */
 .tbl-wrap{border-radius:var(--r2);overflow:hidden;border:1px solid var(--border);margin-bottom:6px;}
@@ -238,13 +254,14 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
     <!-- METAR -->
     <div class="panel active" id="tab-metar">
       <div class="s-head">
-        <div class="s-title">METAR</div>
+        <div class="s-title">METARS</div>
         <div style="display:flex;align-items:center;gap:7px;">
           <span class="dot-live"></span>
           <span id="last-updated" style="font-family:var(--mono);font-size:9px;color:var(--muted);">—</span>
           <button class="s-btn" id="metar-refresh-btn">↻</button>
         </div>
       </div>
+      <div class="metar-summary-bar" id="metar-summary-bar"></div>
       <div id="metar" class="metar-cards"></div>
     </div>
 
@@ -325,7 +342,7 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
   </div><!-- /scroll -->
 
   <nav class="nav" role="tablist">
-    <button class="nav-btn active" data-tab="metar" onclick="switchTab('metar')"><span class="ic">📡</span>METAR</button>
+    <button class="nav-btn active" data-tab="metar" onclick="switchTab('metar')"><span class="ic">📡</span>METARS</button>
     <button class="nav-btn" data-tab="taf" onclick="switchTab('taf')"><span class="ic">📊</span>TAF</button>
     <button class="nav-btn" data-tab="synop" onclick="switchTab('synop')"><span class="ic">🌐</span>SYNOP</button>
     <button class="nav-btn" data-tab="stations" onclick="switchTab('stations')"><span class="ic">⊞</span>Stations</button>
@@ -341,6 +358,7 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
 /* ── CONSTANTS ── */
 const STATIONS=['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
 const ICAO_FLAGS={TNCA:'🇦🇼',TNCB:'🇧🇶',TNCC:'🇨🇼',TNCM:'🇸🇽',SVMI:'🇻🇪',SVVA:'🇻🇪'};
+const ICAO_NAMES={TNCA:'Beatrix · Aruba',TNCB:'Flamingo · Bonaire',TNCC:'Hato · Curaçao',TNCM:'Juliana · St Maarten',SVMI:'Simón Bolívar · VE',SVVA:'Michelena · VE'};
 const TAF_ICAOS=['TNCA','TNCB','TNCC'];
 const METAR_TPL='https://tgftp.nws.noaa.gov/data/observations/metar/stations/{ICAO}.TXT';
 const TAF_TPL='https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/{ICAO}.TXT';
@@ -499,6 +517,29 @@ function parseMetar(raw){
 }
 function isWxCrit(wx){return/\b(?:VCTS|VCSH|TS|TSRA|SHRA)\b|(^|\s)[+-]\s*(?:SHRA|RA|DZ|SN|FG)/i.test(String(wx||''));}
 function isCB(s){return/(?:FEW|SCT|BKN|OVC)\d{3}(?:CB|TCU)/i.test(String(s||''));}
+function getCeiling(cld){
+  if(!cld||cld==='--')return Infinity;
+  const layers=(String(cld).match(/(BKN|OVC)(\d{3})/gi)||[]);
+  let min=Infinity;
+  layers.forEach(l=>{const h=parseInt(l.slice(3))*100;if(h<min)min=h;});
+  return min;
+}
+function flightCat(visM,cld){
+  const c=getCeiling(cld);
+  const v=isNaN(visM)?Infinity:visM;
+  if(v<1600||c<500)return'LIFR';
+  if(v<4800||c<1000)return'IFR';
+  if(v<8000||c<3000)return'MVFR';
+  return'VFR';
+}
+function updateMetarSummaryBar(){
+  const bar=$('metar-summary-bar');if(!bar)return;
+  bar.innerHTML=STATIONS.map(icao=>{
+    const st=metarState[icao];
+    const cat=st&&st.lastCat?st.lastCat:'';
+    return`<div class="msb-pill"><span class="msb-icao">${ICAO_FLAGS[icao]||''} ${icao}</span>${cat?`<span class="msb-cat ${cat}">${cat}</span>`:''}</div>`;
+  }).join('');
+}
 
 /* ── METAR STATE & BUILD ── */
 const metarState={};
@@ -508,16 +549,17 @@ function buildMetarTable(){
   const cont=$('metar');if(!cont)return;
   cont.innerHTML='';
   STATIONS.forEach(icao=>{
-    metarState[icao]={lastTime:null,lastRaw:null,card:null};
+    metarState[icao]={lastTime:null,lastRaw:null,lastCat:null,card:null};
     const c=document.createElement('div');
     c.className='mc';c.id='mc-'+icao;
     c.innerHTML=`
 <div class="mc-head">
   <div class="mc-left">
     <span class="mc-flag">${ICAO_FLAGS[icao]||''}</span>
-    <span class="mc-icao">${icao}</span>
+    <div><span class="mc-icao">${icao}</span><div class="mc-name">${ICAO_NAMES[icao]||''}</div></div>
   </div>
   <div class="mc-right">
+    <span class="mc-flcat" id="mcfc-${icao}"></span>
     <span class="mc-time" id="mct-${icao}">--:--Z</span>
   </div>
 </div>
@@ -552,16 +594,23 @@ function renderMetar(icao,raw){
   const prevTime=st.lastTime;st.lastTime=p.time;
   const isNew=prevTime!==p.time;
 
+  // flight category
+  const cat=flightCat(p.visMin,p.cld);
+  const fce=$('mcfc-'+icao);
+  if(fce){fce.textContent=cat;fce.className='mc-flcat '+cat;}
+  if(metarState[icao])metarState[icao].lastCat=cat;
+
   // time badge
   let tdisp='--:--Z';
   const m6=p.time.match(/^(\d{2})(\d{2})(\d{2})Z$/);
   if(m6)tdisp=`${m6[2]}:${m6[3]}Z`;
   const te=$('mct-'+icao);
   if(te){
+    const ageStr=(p.age>0&&p.age<200)?`<span class="mc-age">${Math.round(p.age)}m ago</span>`:'';
     let badges='';
     if(isSpeci)badges+='<span class="mc-badge speci">SPECI</span>';
     else if(isAuto)badges+='<span class="mc-badge auto">AUTO</span>';
-    te.innerHTML=tdisp+badges;
+    te.innerHTML=tdisp+ageStr+badges;
     te.className='mc-time'+(isNew?' new':'');
     if(isNew)setTimeout(()=>{te.classList.remove('new');},5000);
   }
@@ -631,6 +680,7 @@ function renderMetar(icao,raw){
     if(p.gust>=35||/\b(?:VCTS|TS|TSRA)\b/i.test(p.wx))playCriticalAlarm();
   }
   checkSpeci(icao,metarLine);
+  updateMetarSummaryBar();
   return true;
 }
 
