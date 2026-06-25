@@ -120,6 +120,42 @@ a{color:var(--acc);text-decoration:none;}
 .msb-cat.IFR{color:#ff5f5f;border:1px solid rgba(255,95,95,0.45);animation:ifrpls 1.5s ease-in-out infinite;}
 .msb-cat.LIFR{color:#c084fc;border:1px solid rgba(168,85,247,0.45);animation:ifrpls 1.5s ease-in-out infinite;}
 
+/* SUB-TABS */
+.sub-tab-bar{display:flex;gap:3px;margin-bottom:12px;background:rgba(2,8,18,0.7);border-radius:10px;padding:3px;border:1px solid var(--border);}
+.sub-tab-btn{flex:1;padding:7px 6px;border-radius:8px;border:none;background:none;color:var(--muted);font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:color .15s,background .15s;line-height:1.2;}
+.sub-tab-btn.active{background:rgba(85,193,255,0.13);color:var(--acc);}
+.sub-panel{display:none;}
+.sub-panel.active{display:block;animation:panelIn .18s ease both;}
+/* REFERENCE */
+.ref-section{border-radius:var(--r);border:1px solid var(--border);background:rgba(5,18,34,0.95);overflow:hidden;margin-bottom:10px;}
+.ref-head{padding:9px 13px;background:rgba(27,124,255,0.07);border-bottom:1px solid var(--border);font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);}
+.ref-row{display:flex;gap:10px;padding:8px 13px;border-bottom:1px solid rgba(30,50,80,0.32);align-items:flex-start;}
+.ref-row:last-child{border-bottom:none;}
+.ref-key{font-family:var(--mono);font-size:10px;color:var(--acc);min-width:108px;flex-shrink:0;padding-top:1px;word-break:break-all;}
+.ref-val{font-family:var(--sans);font-size:12px;color:rgba(200,225,255,0.85);line-height:1.5;}
+.ref-badge{display:inline-block;font-family:var(--cond);font-weight:800;font-size:9px;letter-spacing:1px;padding:1px 5px;border-radius:3px;margin-right:3px;text-transform:uppercase;vertical-align:middle;}
+.rb-crit{background:rgba(255,95,95,0.15);border:1px solid rgba(255,95,95,0.45);color:var(--alert);}
+.rb-warn{background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:var(--warn);}
+.rb-info{background:rgba(85,193,255,0.1);border:1px solid rgba(85,193,255,0.3);color:var(--acc);}
+/* SPECI TRIGGER CARDS */
+.speci-trigger{border-radius:var(--r);border:1px solid rgba(245,158,11,0.25);border-left:3px solid var(--warn);background:rgba(5,18,34,0.95);overflow:hidden;margin-bottom:8px;}
+.speci-trigger.lvl-crit{border-left-color:var(--alert);border-color:rgba(255,95,95,0.2);}
+.speci-trigger-head{padding:8px 12px;font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);background:rgba(245,158,11,0.06);border-bottom:1px solid rgba(245,158,11,0.15);}
+.speci-trigger.lvl-crit .speci-trigger-head{color:var(--alert);background:rgba(255,95,95,0.06);border-bottom-color:rgba(255,95,95,0.15);}
+.speci-item{padding:7px 12px;border-bottom:1px solid rgba(30,50,80,0.3);font-size:12px;color:rgba(200,225,255,0.85);line-height:1.5;display:flex;gap:8px;align-items:flex-start;}
+.speci-item:last-child{border-bottom:none;}
+.speci-item::before{content:'›';color:var(--warn);font-family:var(--mono);font-weight:700;flex-shrink:0;}
+.speci-trigger.lvl-crit .speci-item::before{color:var(--alert);}
+/* SYNOP STATION CARDS */
+.synop-stn-card{border-radius:var(--r2);border:1px solid var(--border);background:rgba(5,18,34,0.97);overflow:hidden;margin-bottom:10px;position:relative;}
+.synop-stn-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--acc2),var(--acc));}
+.synop-stn-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px 8px;}
+.synop-stn-flag{font-size:22px;filter:drop-shadow(0 0 6px rgba(85,193,255,0.4));}
+.synop-stn-icao{font-family:var(--cond);font-weight:800;font-size:18px;letter-spacing:2px;color:var(--acc);}
+.synop-stn-sub{font-family:var(--cond);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+.synop-src-lbl{font-family:var(--cond);font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-weight:700;padding:6px 13px 3px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2);}
+.synop-raw-str{padding:5px 13px 8px;font-family:var(--mono);font-size:9px;color:rgba(160,195,235,0.3);word-break:break-all;line-height:1.5;border-top:1px solid rgba(30,50,80,0.3);}
+
 /* TABLE (TAF/SYNOP) */
 .tbl-wrap{border-radius:var(--r2);overflow:hidden;border:1px solid var(--border);margin-bottom:6px;}
 .tbl-wrap table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
@@ -261,8 +297,101 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
           <button class="s-btn" id="metar-refresh-btn">↻</button>
         </div>
       </div>
-      <div class="metar-summary-bar" id="metar-summary-bar"></div>
-      <div id="metar" class="metar-cards"></div>
+      <div class="sub-tab-bar" id="metar-sub-bar">
+        <button class="sub-tab-btn active" data-sub="live" onclick="switchSubTab('metar','live')">Live</button>
+        <button class="sub-tab-btn" data-sub="speci" onclick="switchSubTab('metar','speci')">SPECI Criteria</button>
+        <button class="sub-tab-btn" data-sub="guide" onclick="switchSubTab('metar','guide')">Obs Guide</button>
+      </div>
+
+      <!-- Live -->
+      <div class="sub-panel active" id="metar-sub-live">
+        <div class="metar-summary-bar" id="metar-summary-bar"></div>
+        <div id="metar" class="metar-cards"></div>
+      </div>
+
+      <!-- SPECI Criteria -->
+      <div class="sub-panel" id="metar-sub-speci">
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Wind</div>
+          <div class="speci-item">Mean direction changes ≥ <strong>60°</strong> when speed ≥ 10 kt</div>
+          <div class="speci-item">Mean speed changes ≥ <strong>10 kt</strong> (increase or decrease)</div>
+          <div class="speci-item">Gusts increase by ≥ 10 kt and reach ≥ <strong>15 kt above mean</strong></div>
+        </div>
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Visibility — Threshold Crossing</div>
+          <div class="speci-item">Passes through <strong>800 m</strong></div>
+          <div class="speci-item">Passes through <strong>1 500 m</strong></div>
+          <div class="speci-item">Passes through <strong>3 000 m</strong></div>
+          <div class="speci-item">Passes through <strong>5 000 m</strong></div>
+        </div>
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Present Weather — Onset or Cessation</div>
+          <div class="speci-item">Thunderstorm <span class="ref-badge rb-crit">TS</span><span class="ref-badge rb-crit">TSRA</span><span class="ref-badge rb-crit">TSGR</span><span class="ref-badge rb-crit">VCTS</span></div>
+          <div class="speci-item">Freezing precipitation <span class="ref-badge rb-crit">FZRA</span><span class="ref-badge rb-crit">FZDZ</span><span class="ref-badge rb-crit">FZFG</span></div>
+          <div class="speci-item">Moderate or heavy precipitation <span class="ref-badge rb-crit">+RA</span><span class="ref-badge rb-crit">+SN</span><span class="ref-badge rb-crit">+DZ</span><span class="ref-badge rb-crit">+SH</span></div>
+          <div class="speci-item">Duststorm or sandstorm <span class="ref-badge rb-warn">DS</span><span class="ref-badge rb-warn">SS</span></div>
+          <div class="speci-item">Squall <span class="ref-badge rb-warn">SQ</span></div>
+          <div class="speci-item">Low drifting / blowing snow <span class="ref-badge rb-warn">DRBLSN</span></div>
+        </div>
+        <div class="speci-trigger">
+          <div class="speci-trigger-head">Cloud — Ceiling Threshold Crossing</div>
+          <div class="speci-item">Amount changes: BKN/OVC ↔ FEW/SCT or SKC/NSC</div>
+          <div class="speci-item">Cloud base crosses <strong>100 ft</strong> (30 m)</div>
+          <div class="speci-item">Cloud base crosses <strong>200 ft</strong> (60 m)</div>
+          <div class="speci-item">Cloud base crosses <strong>500 ft</strong> (150 m)</div>
+          <div class="speci-item">Cloud base crosses <strong>1 000 ft</strong> (300 m)</div>
+          <div class="speci-item">Cloud base crosses <strong>1 500 ft</strong> (450 m)</div>
+        </div>
+        <div class="speci-trigger">
+          <div class="speci-trigger-head">RVR — Runway Visual Range</div>
+          <div class="speci-item">Passes through <strong>150 m, 300 m, 600 m</strong> or <strong>800 m</strong></div>
+        </div>
+        <div class="ref-section" style="margin-top:10px;">
+          <div class="ref-head">SPECI vs METAR — Quick Rule</div>
+          <div class="ref-row"><span class="ref-key">METAR</span><span class="ref-val">Routine — issued every 30 min at :00 and :30 UTC</span></div>
+          <div class="ref-row"><span class="ref-key">SPECI</span><span class="ref-val">Immediate — issued as soon as any criterion above is triggered. Not time-bound. Next routine METAR cancels the SPECI status</span></div>
+          <div class="ref-row"><span class="ref-key">Trend</span><span class="ref-val">After a SPECI, continue to monitor — issue additional SPECIs if further threshold crossings occur</span></div>
+        </div>
+      </div>
+
+      <!-- Obs Guide -->
+      <div class="sub-panel" id="metar-sub-guide">
+        <div class="ref-section">
+          <div class="ref-head">METAR / SPECI Element Order</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--acc);padding:9px 13px;background:rgba(0,0,0,0.35);border-bottom:1px solid var(--border);word-break:break-all;line-height:1.8;letter-spacing:.3px;">
+            METAR TNCC 251300Z 12018G28KT 090V150 9999 FEW018CB SCT025 28/22 Q1012 RETS NOSIG
+          </div>
+          <div class="ref-row"><span class="ref-key">Type</span><span class="ref-val">METAR (routine) or SPECI (special)</span></div>
+          <div class="ref-row"><span class="ref-key">ICAO ID</span><span class="ref-val">4-letter station identifier — TNCC, TNCA, TNCB, TNCM</span></div>
+          <div class="ref-row"><span class="ref-key">DDHHmmZ</span><span class="ref-val">Day of month · hour · minute UTC. Always append <strong>Z</strong></span></div>
+          <div class="ref-row"><span class="ref-key">Wind</span><span class="ref-val">dddffGfmfmKT — true direction, speed, gust. <strong>VRB</strong> when direction variable &lt; 3 kt. <strong>00000KT</strong> for calm. Variable sector: dddVddd appended</span></div>
+          <div class="ref-row"><span class="ref-key">Visibility</span><span class="ref-val">VVVV in metres (4 digits). <strong>9999</strong> = ≥ 10 km. <strong>CAVOK</strong> when vis ≥ 10 km, no CB, no sig wx and no cloud below 1 500 m / 5 000 ft</span></div>
+          <div class="ref-row"><span class="ref-key">RVR</span><span class="ref-val">R28/P2000N — include when vis &lt; 1 500 m. Runway + RVR value (m) + tendency N/D/U. Omit when CAVOK</span></div>
+          <div class="ref-row"><span class="ref-key">Present Wx</span><span class="ref-val">Qualifier (+ / –) + descriptor + phenomenon. e.g. +TSRA, SHRA, BR, HZ, FG. Use <strong>//</strong> when auto station cannot observe</span></div>
+          <div class="ref-row"><span class="ref-key">Cloud</span><span class="ref-val">NsNsNshshshs in hundreds of feet. Amounts: FEW (1–2), SCT (3–4), BKN (5–7 = ceiling), OVC (8 = ceiling). Append CB or TCU if present. SKC / NSC when appropriate</span></div>
+          <div class="ref-row"><span class="ref-key">Temp / Dew</span><span class="ref-val">TT/TdTd in whole °C. Prefix M for below zero — e.g. 28/22, M02/M06</span></div>
+          <div class="ref-row"><span class="ref-key">QNH</span><span class="ref-val">Q followed by 4-digit hPa — e.g. Q1012</span></div>
+          <div class="ref-row"><span class="ref-key">Recent Wx</span><span class="ref-val">RE + phenomenon observed in past hour but not current — e.g. RETS, RERA</span></div>
+          <div class="ref-row"><span class="ref-key">Wind Shear</span><span class="ref-val">WS R28 / WS ALL RWY — reported when wind shear on approach or departure</span></div>
+          <div class="ref-row"><span class="ref-key">TREND</span><span class="ref-val">NOSIG (no significant change expected in 2 h) or BECMG / TEMPO + elements</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Cloud Amount Codes</div>
+          <div class="ref-row"><span class="ref-key">FEW</span><span class="ref-val">1 – 2 oktas (not a ceiling)</span></div>
+          <div class="ref-row"><span class="ref-key">SCT</span><span class="ref-val">3 – 4 oktas (not a ceiling)</span></div>
+          <div class="ref-row"><span class="ref-key">BKN</span><span class="ref-val">5 – 7 oktas — counts as ceiling</span></div>
+          <div class="ref-row"><span class="ref-key">OVC</span><span class="ref-val">8 oktas / overcast — counts as ceiling</span></div>
+          <div class="ref-row"><span class="ref-key">VV///</span><span class="ref-val">Sky obscured — vertical visibility reported instead</span></div>
+          <div class="ref-row"><span class="ref-key">CB / TCU</span><span class="ref-val">Append to cloud layer when cumulonimbus or towering cumulus present</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Issue Times &amp; Corrections</div>
+          <div class="ref-row"><span class="ref-key">METAR</span><span class="ref-val">Every 30 min at :00 and :30 UTC. Issue within 5 min of observation</span></div>
+          <div class="ref-row"><span class="ref-key">SPECI</span><span class="ref-val">Immediately when criteria met — no fixed interval</span></div>
+          <div class="ref-row"><span class="ref-key">AUTO</span><span class="ref-val">Appended for automatic station with no human observer</span></div>
+          <div class="ref-row"><span class="ref-key">COR</span><span class="ref-val">Corrected report — replaces erroneous previous report</span></div>
+        </div>
+      </div>
     </div>
 
     <!-- TAF -->
@@ -282,13 +411,88 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
     <div class="panel" id="tab-synop">
       <div class="s-head">
         <div class="s-title">SYNOP</div>
-        <button class="s-btn" id="synop-refresh-btn">↻ SYNOP</button>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span id="synop-updated" style="font-family:var(--mono);font-size:9px;color:var(--muted);">—</span>
+          <button class="s-btn" id="synop-refresh-btn">↻</button>
+        </div>
       </div>
-      <div class="tbl-wrap">
-        <table id="synop-table"><thead><tr><th>Source</th><th>Time</th><th>Type</th><th>Stns</th></tr></thead>
-        <tbody id="synop"></tbody></table>
+      <div class="sub-tab-bar" id="synop-sub-bar">
+        <button class="sub-tab-btn active" data-sub="tnca" onclick="switchSubTab('synop','tnca')">🇦🇼 Aruba</button>
+        <button class="sub-tab-btn" data-sub="tncb" onclick="switchSubTab('synop','tncb')">🇧🇶 Bonaire</button>
+        <button class="sub-tab-btn" data-sub="tncc" onclick="switchSubTab('synop','tncc')">🇨🇼 Curaçao</button>
+        <button class="sub-tab-btn" data-sub="rules" onclick="switchSubTab('synop','rules')">FM-12</button>
       </div>
-      <div class="status-bar"><span id="synop-updated">—</span></div>
+
+      <div class="sub-panel active" id="synop-sub-tnca">
+        <div id="synop-card-tnca"><div class="loading-msg">Loading Aruba SYNOP…</div></div>
+      </div>
+      <div class="sub-panel" id="synop-sub-tncb">
+        <div id="synop-card-tncb"><div class="loading-msg">Loading Bonaire SYNOP…</div></div>
+      </div>
+      <div class="sub-panel" id="synop-sub-tncc">
+        <div id="synop-card-tncc"><div class="loading-msg">Loading Curaçao SYNOP…</div></div>
+      </div>
+
+      <!-- FM-12 Rules -->
+      <div class="sub-panel" id="synop-sub-rules">
+        <div class="ref-section">
+          <div class="ref-head">Observation Times (UTC)</div>
+          <div class="ref-row"><span class="ref-key">Main synops</span><span class="ref-val">00, 03, 06, 09, 12, 15, 18, 21 UTC — full land surface observation</span></div>
+          <div class="ref-row"><span class="ref-key">Intermediate</span><span class="ref-val">01, 07, 13, 19 UTC — some stations (check local SOP)</span></div>
+          <div class="ref-row"><span class="ref-key">Ship (SHIP)</span><span class="ref-val">00, 06, 12, 18 UTC standard</span></div>
+          <div class="ref-row"><span class="ref-key">Deadline</span><span class="ref-val">Transmit within 15 min of observation time for main synops</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Section 1 — Land Surface Data</div>
+          <div class="ref-row"><span class="ref-key">IIiii</span><span class="ref-val">WMO station number (5 digits)</span></div>
+          <div class="ref-row"><span class="ref-key">iRiXhVV</span><span class="ref-val">iR = precipitation indicator · iX = weather/station type indicator · h = lowest cloud base height code · VV = visibility code (see table below)</span></div>
+          <div class="ref-row"><span class="ref-key">Nddff</span><span class="ref-val">N = total cloud cover (0–9 oktas) · dd = wind direction in tens of degrees · ff = wind speed (units per iX)</span></div>
+          <div class="ref-row"><span class="ref-key">00fff</span><span class="ref-val">Wind speed extension when ff = 99 (actual speed ≥ 99 units)</span></div>
+          <div class="ref-row"><span class="ref-key">1SnTTT</span><span class="ref-val">Air temperature in tenths of °C · Sn = 0 positive, 1 negative</span></div>
+          <div class="ref-row"><span class="ref-key">2SnTdTdTd</span><span class="ref-val">Dew-point in tenths of °C (or 29RHR H for relative humidity when Sn = 9)</span></div>
+          <div class="ref-row"><span class="ref-key">3PPPP</span><span class="ref-val">Station-level pressure in tenths of hPa (leading 9 or 10 dropped)</span></div>
+          <div class="ref-row"><span class="ref-key">4PPPP</span><span class="ref-val">Mean sea-level pressure (QNH) in tenths of hPa</span></div>
+          <div class="ref-row"><span class="ref-key">5appp</span><span class="ref-val">Pressure tendency: a = characteristic code (0–8) · ppp = 3 h change in tenths of hPa</span></div>
+          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation amount in mm · t = duration period code</span></div>
+          <div class="ref-row"><span class="ref-key">7wwW1W2</span><span class="ref-val">ww = present weather code (00–99) · W1 = past weather 1 · W2 = past weather 2</span></div>
+          <div class="ref-row"><span class="ref-key">8NhCLCMCH</span><span class="ref-val">Nh = low-cloud cover (oktas) · CL = low cloud type · CM = medium cloud type · CH = high cloud type</span></div>
+          <div class="ref-row"><span class="ref-key">9GGgg</span><span class="ref-val">Time of observation when different from bulletin header</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Section 3 — Supplementary / Climatological Data (333)</div>
+          <div class="ref-row"><span class="ref-key">1SnTxTxTx</span><span class="ref-val">Maximum temperature over observation period (tenths of °C)</span></div>
+          <div class="ref-row"><span class="ref-key">2SnTnTnTn</span><span class="ref-val">Minimum temperature over observation period (tenths of °C)</span></div>
+          <div class="ref-row"><span class="ref-key">3Ejjj</span><span class="ref-val">State of ground (E) and snow / ice depth (jjj)</span></div>
+          <div class="ref-row"><span class="ref-key">55SSS</span><span class="ref-val">Duration of sunshine in tenths of hours since last observation</span></div>
+          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation amount for a specified period</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Visibility Code (VV)</div>
+          <div class="ref-row"><span class="ref-key">00</span><span class="ref-val">&lt; 100 m</span></div>
+          <div class="ref-row"><span class="ref-key">01 – 50</span><span class="ref-val">VV × 100 m (e.g. 15 = 1 500 m)</span></div>
+          <div class="ref-row"><span class="ref-key">51 – 55</span><span class="ref-val">(VV − 50) km (e.g. 52 = 2 km)</span></div>
+          <div class="ref-row"><span class="ref-key">56 – 80</span><span class="ref-val">Stepped scale — see WMO No. 306 Table 4377</span></div>
+          <div class="ref-row"><span class="ref-key">89</span><span class="ref-val">≥ 70 km</span></div>
+          <div class="ref-row"><span class="ref-key">90 – 99</span><span class="ref-val">Special codes: 90 = &lt; 0.05 km … 99 = ≥ 50 km</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Pressure Tendency (a — group 5)</div>
+          <div class="ref-row"><span class="ref-key">0</span><span class="ref-val">Rising then falling — now same or higher than 3 h ago</span></div>
+          <div class="ref-row"><span class="ref-key">1</span><span class="ref-val">Rising then steady, or rising slowly</span></div>
+          <div class="ref-row"><span class="ref-key">2</span><span class="ref-val">Rising steadily or unsteadily</span></div>
+          <div class="ref-row"><span class="ref-key">3</span><span class="ref-val">Falling or steady, then rising; now higher than 3 h ago</span></div>
+          <div class="ref-row"><span class="ref-key">4</span><span class="ref-val">Steady — same as 3 h ago</span></div>
+          <div class="ref-row"><span class="ref-key">5</span><span class="ref-val">Falling then rising — now same or lower than 3 h ago</span></div>
+          <div class="ref-row"><span class="ref-key">6</span><span class="ref-val">Falling then steady, or falling slowly</span></div>
+          <div class="ref-row"><span class="ref-key">7</span><span class="ref-val">Falling steadily or unsteadily</span></div>
+          <div class="ref-row"><span class="ref-key">8</span><span class="ref-val">Steady or rising, then falling; now lower than 3 h ago</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Wind Units (iX indicator)</div>
+          <div class="ref-row"><span class="ref-key">iX = 1 / 2</span><span class="ref-val">Wind in m/s (iw = 0 or 1 in AAXX header)</span></div>
+          <div class="ref-row"><span class="ref-key">iX = 3 / 4</span><span class="ref-val">Wind in knots (iw = 3 or 4 in AAXX header)</span></div>
+        </div>
+      </div>
     </div>
 
     <!-- STATIONS -->
@@ -911,41 +1115,51 @@ function renderSynopReport(rep){
 }
 
 const SYNOP_SOURCES=[
-  {key:'tnca-si',flag:ICAO_FLAGS.TNCA,label:'TNCA · SINU50',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sinu50.tnca..txt'},
-  {key:'tnca-sm',flag:ICAO_FLAGS.TNCA,label:'TNCA · SMNU50',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smnu50.tnca..txt'},
-  {key:'tncc-si',flag:ICAO_FLAGS.TNCC,label:'TNCC · SICA20',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sica20.tncc..txt'},
-  {key:'tncc-sm',flag:ICAO_FLAGS.TNCC,label:'TNCC · SMCA01',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smca01.tncc..txt'},
+  {key:'tnca-si',station:'tnca',flag:ICAO_FLAGS.TNCA,label:'SINU50 · TNCA',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sinu50.tnca..txt'},
+  {key:'tnca-sm',station:'tnca',flag:ICAO_FLAGS.TNCA,label:'SMNU50 · TNCA',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smnu50.tnca..txt'},
+  {key:'tncb-si',station:'tncb',flag:ICAO_FLAGS.TNCB,label:'SINU50 · TNCB',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sinu50.tncb..txt'},
+  {key:'tncb-sm',station:'tncb',flag:ICAO_FLAGS.TNCB,label:'SMNU50 · TNCB',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smnu50.tncb..txt'},
+  {key:'tncc-si',station:'tncc',flag:ICAO_FLAGS.TNCC,label:'SICA20 · TNCC',type:'SI',url:'https://tgftp.nws.noaa.gov/data/raw/si/sica20.tncc..txt'},
+  {key:'tncc-sm',station:'tncc',flag:ICAO_FLAGS.TNCC,label:'SMCA01 · TNCC',type:'SM',url:'https://tgftp.nws.noaa.gov/data/raw/sm/smca01.tncc..txt'},
 ];
-const synopTbody=$('synop');
+const synopStationData={tnca:{},tncb:{},tncc:{}};
 
-function buildSynopTable(){
-  if(!synopTbody)return;
-  synopTbody.innerHTML='';
-  SYNOP_SOURCES.forEach(s=>{
-    const tr=document.createElement('tr');tr.dataset.key=s.key;
-    tr.innerHTML=`<td class="station"><span class="synop-flag">${s.flag}</span>${s.label}</td><td>--</td><td>${s.type==='SI'?'SI':'SM'}</td><td>—</td>`;
-    const dr=document.createElement('tr');dr.className='synop-decoded-row';dr.dataset.key=s.key;
-    dr.innerHTML='<td colspan="4"><div class="synop-decoded"></div></td>';
-    synopTbody.appendChild(tr);synopTbody.appendChild(dr);
+function updateSynopStationCard(stationKey){
+  const cont=$('synop-card-'+stationKey);if(!cont)return;
+  const data=synopStationData[stationKey];
+  const sources=SYNOP_SOURCES.filter(s=>s.station===stationKey);
+  let html='';
+  sources.forEach(src=>{
+    const d=data[src.key];if(!d)return;
+    const parsed=d.parsed;
+    html+=`<div class="synop-stn-card">
+<div class="synop-stn-head">
+  <div style="display:flex;align-items:center;gap:9px;">
+    <span class="synop-stn-flag">${src.flag}</span>
+    <div><div class="synop-stn-icao">${src.label}</div><div class="synop-stn-sub">${parsed.bulletinTime||'—'}</div></div>
+  </div>
+</div>
+<div style="padding:0 10px 6px;">
+${parsed.reports.length?parsed.reports.map(renderSynopReport).join('<div style="height:6px"></div>'):'<div class="loading-msg">No decodable reports in bulletin</div>'}
+</div>
+<div class="synop-src-lbl">${src.label} · ${src.type}</div>
+<div class="synop-raw-str">${escHtml((d.rawText||'').slice(0,400))}</div>
+</div>`;
   });
+  cont.innerHTML=html||'<div class="loading-msg">Awaiting data…</div>';
 }
-function renderSynopRow(source,rawText){
+function renderSynopStation(source,rawText){
   const text=sanitize(rawText);
-  const tr=synopTbody.querySelector(`tr[data-key="${source.key}"]:not(.synop-decoded-row)`);
-  const dr=synopTbody.querySelector(`tr.synop-decoded-row[data-key="${source.key}"]`);
-  if(!tr||!dr)return;
-  const tds=tr.querySelectorAll('td');
   const parsed=parseSynopBulletin(text);
-  tds[1].textContent=parsed.bulletinTime||'--';
-  tds[3].textContent=parsed.reports.length?`${parsed.reports.length}`:' —';
-  const dc=dr.querySelector('.synop-decoded');
-  if(dc)dc.innerHTML=parsed.reports.length?parsed.reports.map(renderSynopReport).join(''):`<div class="loading-msg">No decodable reports</div>`;
+  synopStationData[source.station][source.key]={parsed,rawText};
+  updateSynopStationCard(source.station);
+  const e=$('synop-updated');if(e)e.textContent=nowStamp();
 }
-async function loadSynopRow(source){
+async function loadSynopSource(source){
   const out=await fetchRetry(source.url);
-  if(out.ok){renderSynopRow(source,out.text);const e=$('synop-updated');if(e)e.textContent=nowStamp();}
+  if(out.ok)renderSynopStation(source,out.text);
 }
-async function loadAllSynops(){await Promise.all(SYNOP_SOURCES.map(loadSynopRow));}
+async function loadAllSynops(){await Promise.all(SYNOP_SOURCES.map(loadSynopSource));}
 
 /* ── STATIONS ── */
 const API_BASE='https://curacao-weather-api.generast.workers.dev/';
@@ -1137,6 +1351,12 @@ async function loadWeather(){
 }
 
 /* ── TABS ── */
+function switchSubTab(panel,name){
+  const bar=document.getElementById(panel+'-sub-bar');
+  if(bar)bar.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===name));
+  document.querySelectorAll('[id^="'+panel+'-sub-"]').forEach(p=>p.classList.toggle('active',p.id===panel+'-sub-'+name));
+}
+window.switchSubTab=switchSubTab;
 const loadedTabs={metar:true,taf:false,synop:false,stations:false,atc:true,weather:false};
 function switchTab(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
@@ -1210,7 +1430,6 @@ if(!document.querySelector('style[data-rwc-hidden]')){
 /* ── INIT ── */
 buildMetarTable();
 buildTafTable();
-buildSynopTable();
 buildATC();
 
 (async function init(){
