@@ -193,6 +193,22 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
 .synop-field .v{color:#fff;font-family:var(--mono);font-size:13px;text-align:right;}
 .synop-field .v.warn{color:var(--warn);}
 .synop-field .v.alert{color:var(--alert);}
+/* SYNOP TILE GRID */
+.sy-report{border-top:1px solid var(--border);}
+.sy-report+.sy-report{border-top:2px solid rgba(30,50,80,0.5);}
+.sy-report-head{display:flex;align-items:center;justify-content:space-between;padding:7px 13px 5px;background:rgba(0,0,0,0.2);}
+.sy-wmo{font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.sy-stype{font-family:var(--cond);font-size:9px;letter-spacing:2px;padding:2px 7px;border-radius:4px;background:rgba(100,100,120,0.25);color:var(--muted);border:1px solid var(--border);}
+.sy-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);}
+.sy-tile{background:rgba(3,12,24,0.92);padding:9px 11px;display:flex;flex-direction:column;gap:3px;}
+.sy-lbl{font-family:var(--cond);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.sy-val{font-family:var(--mono);font-size:16px;font-weight:700;color:#fff;line-height:1.2;}
+.sy-val.alert{color:var(--alert);}
+.sy-val.warn{color:var(--warn);}
+.sy-val.ok{color:var(--ok);}
+.sy-sub{font-family:var(--cond);font-size:9px;color:rgba(160,195,235,0.5);letter-spacing:.3px;line-height:1.4;}
+.sy-wx{padding:7px 13px;font-family:var(--sans);font-size:11px;color:#d6eaff;background:rgba(85,193,255,0.04);border-top:1px solid var(--border);line-height:1.6;}
+.sy-raw{padding:5px 13px 7px;font-family:var(--mono);font-size:9px;color:rgba(160,195,235,0.22);word-break:break-all;line-height:1.5;border-top:1px solid rgba(30,50,80,0.25);}
 .synop-wx{margin-top:6px;padding:5px 9px;background:rgba(85,193,255,0.06);border-radius:4px;font-size:11px;color:#d6eaff;font-style:italic;line-height:1.45;}
 
 /* STATIONS */
@@ -1430,7 +1446,20 @@ const T_H={'0':'0–50m','1':'50–100m','2':'100–200m','3':'200–300m','4':'
 const T_A={'0':'Rising then falling','1':'Rising then steady','2':'Rising','3':'Falling then rising','4':'Steady','5':'Falling then rising (lower)','6':'Falling then steady','7':'Falling','8':'Steady/rising then falling'};
 const T_TR={'1':'6h','2':'12h','3':'18h','4':'24h','5':'1h','6':'2h','7':'3h','8':'9h','9':'15h'};
 
-function decodeVV(vv){if(!vv||vv==='//') return null;const n=parseInt(vv);if(isNaN(n))return null;if(n===0)return'<100m';if(n<=50)return`${(n*0.1).toFixed(1)}km`;if(n<=80)return`${n-50}km`;if(n===89)return'≥70km';const a={'90':'<0.05km','91':'0.05km','92':'0.2km','93':'0.5km','94':'1km','95':'2km','96':'4km','97':'10km','98':'20km','99':'≥50km'};return a[vv]||null;}
+function decodeVV(vv){
+  if(!vv||vv==='//') return null;
+  const n=parseInt(vv);
+  if(isNaN(n)) return null;
+  if(n===0) return '<100 m';
+  if(n<=50){const m=n*100;return m>=1000?`${(m/1000).toFixed(1)} km`:`${m} m`;}
+  if(n<=70) return`${n-45} km`;
+  if(n<=79) return`${(n-71)*5+30} km`;
+  if(n<=85) return`${(n-80)*5+75} km`;
+  if(n<=88) return`${(n-86)*10+110} km`;
+  if(n===89) return'≥140 km';
+  const a={'90':'<0.05 km','91':'0.05 km','92':'0.2 km','93':'0.5 km','94':'1 km','95':'2 km','96':'4 km','97':'10 km','98':'20 km','99':'≥50 km'};
+  return a[vv]||null;
+}
 function decTemp(g){if(g.length!==5)return null;const sn=g[1],t=g.slice(2);if(t==='///')return null;const s=sn==='1'?-1:1;const v=parseInt(t);return isNaN(v)?null:+(s*v/10).toFixed(1);}
 function decPres(g){if(g.length!==5)return null;const p=g.slice(1);if(p==='////')return null;let v=parseInt(p.replace('/',''));if(isNaN(v))return null;v=v/10;if(v<500)v+=1000;return+v.toFixed(1);}
 function decTend(g){if(g.length!==5)return null;const a=g[1],p=g.slice(2);const ch=parseInt(p);return{a,change:isNaN(ch)?null:+((a>='5'?-1:1)*ch/10).toFixed(1),desc:T_A[a]||null};}
@@ -1478,32 +1507,107 @@ function decodeReport(tok,wu){
   return r;
 }
 function renderSynopReport(rep){
-  const wx=[];if(rep.ww&&T_WW[rep.ww])wx.push(T_WW[rep.ww]);if(rep.W1&&T_W[rep.W1]&&rep.W1!=='/')wx.push('Past: '+T_W[rep.W1]);
-  const cl=[];if(rep.CL&&T_CL[rep.CL]&&rep.CL!=='0'&&rep.CL!=='/')cl.push('Low: '+T_CL[rep.CL]);if(rep.CM&&T_CM[rep.CM]&&rep.CM!=='0'&&rep.CM!=='/')cl.push('Mid: '+T_CM[rep.CM]);if(rep.CH&&T_CH[rep.CH]&&rep.CH!=='0'&&rep.CH!=='/')cl.push('High: '+T_CH[rep.CH]);
-  const tCl=rep.T!=null&&rep.T>=35?' alert':(rep.T!=null&&rep.T<=5?' warn':'');
-  const wCl=rep.windSp!=null&&rep.windSp>=25?' alert':(rep.windSp!=null&&rep.windSp>=15?' warn':'');
+  const CLOUD_AMT={'0':'SKC','1':'FEW','2':'FEW','3':'SCT','4':'SCT','5':'BKN','6':'BKN','7':'BKN','8':'OVC','9':'SKX','/':'—'};
+  const H_FT={'0':'0–165 ft','1':'165–330 ft','2':'330–660 ft','3':'660–985 ft','4':'985–1970 ft','5':'1970–3300 ft','6':'3300–4920 ft','7':'4920–6560 ft','8':'6560–8200 ft','9':'≥8200 ft'};
+  const CARD=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+
+  const wCl=rep.windSp>=25?' alert':(rep.windSp>=15?' warn':'');
   const vkm=rep.visText&&/^\d/.test(rep.visText)?parseFloat(rep.visText):null;
   const vCl=vkm!=null?(vkm<3?' alert':(vkm<8?' warn':'')):'';
-  const wd=rep.dir==='Calm'?'Calm':(rep.windSp!=null?`${dirCard(rep.dir)} ${rep.windSp} ${rep.windUnits||''}`:' —');
-  const flds=[
-    `<div class="synop-field"><span class="k">Vis</span><span class="v${vCl}">${rep.visText||'—'}</span></div>`,
-    `<div class="synop-field"><span class="k">Wind</span><span class="v${wCl}">${wd}</span></div>`,
-    `<div class="synop-field"><span class="k">Cloud</span><span class="v">${T_N[rep.N]||'—'}</span></div>`,
-    `<div class="synop-field"><span class="k">Base</span><span class="v">${T_H[rep.h]||'—'}</span></div>`,
-    `<div class="synop-field"><span class="k">Temp</span><span class="v${tCl}">${rep.T!=null?rep.T+'°C':'—'}</span></div>`,
-  ];
-  if(rep.Td!=null)flds.push(`<div class="synop-field"><span class="k">Dew</span><span class="v">${rep.Td}°C</span></div>`);
-  if(rep.RH!=null)flds.push(`<div class="synop-field"><span class="k">RH</span><span class="v">${rep.RH}%</span></div>`);
+  const tCl=rep.T!=null&&rep.T>=35?' alert':(rep.T!=null&&rep.T<=5?' warn':'');
   const pres=rep.Pmsl!=null?rep.Pmsl:(rep.Pstn!=null?rep.Pstn:null);
   const presLbl=rep.Pmsl!=null?'QNH':'QFE';
-  if(pres!=null)flds.push(`<div class="synop-field"><span class="k">${presLbl}</span><span class="v">${pres.toFixed(1)} hPa</span></div>`);
-  if(rep.tendency){const ch=rep.tendency.change;flds.push(`<div class="synop-field"><span class="k">Tendency</span><span class="v">${ch!=null?(ch>=0?'+':'')+ch.toFixed(1)+' hPa/3h':rep.tendency.desc||'—'}</span></div>`);}
-  if(rep.precip&&rep.precip.amount!=null)flds.push(`<div class="synop-field"><span class="k">Precip</span><span class="v">${rep.precip.amount} mm${rep.precip.pDesc?' / '+rep.precip.pDesc:''}</span></div>`);
-  if(rep.Tmax!=null)flds.push(`<div class="synop-field"><span class="k">Tmax</span><span class="v">${rep.Tmax}°C</span></div>`);
-  if(rep.Tmin!=null)flds.push(`<div class="synop-field"><span class="k">Tmin</span><span class="v">${rep.Tmin}°C</span></div>`);
-  const wxBlock=[...wx,...cl].length?`<div class="synop-wx">${[...wx,...cl].join(' · ')}</div>`:'';
   const stype=rep.iX?(rep.iX>='4'?'AUTO':'MAN'):'';
-  return`<div class="synop-station-block"><div class="synop-block-head"><span>WMO ${rep.iiiii}</span><span class="iiiii">${stype}</span></div>${flds.join('')}${wxBlock}</div>`;
+
+  const nCode=rep.N||'/';
+  const cAmt=CLOUD_AMT[nCode]||'—';
+  const cOktas=T_N[nCode]||'—';
+
+  let wDirStr='—', wSpdStr='', wCardStr='';
+  if(rep.dir==='Calm'){wDirStr='Calm';}
+  else if(rep.dir!=null){wDirStr=rep.dir+'°';wCardStr=CARD[Math.round(rep.dir/22.5)%16]||'';}
+  if(rep.windSp!=null) wSpdStr=rep.windSp+' '+(rep.windUnits||'m/s');
+
+  const tiles=[];
+
+  // Wind
+  tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Wind</div>
+<div class="sy-val${wCl}">${wDirStr}</div>
+<div class="sy-sub">${wSpdStr}${wCardStr?' · '+wCardStr:''}</div>
+</div>`);
+
+  // Visibility
+  tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Visibility</div>
+<div class="sy-val${vCl}">${rep.visText||'—'}</div>
+</div>`);
+
+  // Cloud
+  tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Cloud Cover</div>
+<div class="sy-val">${cAmt}</div>
+<div class="sy-sub">${cOktas} oktas${rep.h&&rep.h!=='/'?' · '+H_FT[rep.h]:''}</div>
+</div>`);
+
+  // Temperature
+  if(rep.T!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Temperature</div>
+<div class="sy-val${tCl}">${rep.T}°C</div>
+</div>`);
+
+  // Dew / RH
+  if(rep.Td!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Dew Point</div>
+<div class="sy-val">${rep.Td}°C</div>
+</div>`);
+  else if(rep.RH!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Rel. Humidity</div>
+<div class="sy-val">${rep.RH}%</div>
+</div>`);
+
+  // QNH / QFE
+  if(pres!=null){
+    const tendStr=rep.tendency&&rep.tendency.change!=null?`${rep.tendency.change>=0?'+':''}${rep.tendency.change.toFixed(1)} hPa/3h`:'';
+    tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">${presLbl}</div>
+<div class="sy-val">${pres.toFixed(1)} hPa</div>
+${tendStr?`<div class="sy-sub">${tendStr}</div>`:''}
+</div>`);
+  }
+
+  // Precipitation
+  if(rep.precip&&rep.precip.amount!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">Precipitation</div>
+<div class="sy-val">${rep.precip.amount} mm</div>
+${rep.precip.pDesc?`<div class="sy-sub">/ ${rep.precip.pDesc}</div>`:''}
+</div>`);
+
+  // Tmax / Tmin
+  if(rep.Tmax!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">T Max</div>
+<div class="sy-val">${rep.Tmax}°C</div>
+</div>`);
+  if(rep.Tmin!=null) tiles.push(`<div class="sy-tile">
+<div class="sy-lbl">T Min</div>
+<div class="sy-val">${rep.Tmin}°C</div>
+</div>`);
+
+  const wx=[];
+  if(rep.ww&&T_WW[rep.ww])wx.push(T_WW[rep.ww]);
+  if(rep.W1&&T_W[rep.W1]&&rep.W1!=='/')wx.push('Past: '+T_W[rep.W1]);
+  if(rep.CL&&T_CL[rep.CL]&&rep.CL!=='0'&&rep.CL!=='/')wx.push('Low: '+T_CL[rep.CL]);
+  if(rep.CM&&T_CM[rep.CM]&&rep.CM!=='0'&&rep.CM!=='/')wx.push('Mid: '+T_CM[rep.CM]);
+  if(rep.CH&&T_CH[rep.CH]&&rep.CH!=='0'&&rep.CH!=='/')wx.push('High: '+T_CH[rep.CH]);
+
+  const wxBlock=wx.length?`<div class="sy-wx">${wx.join(' · ')}</div>`:'';
+
+  return`<div class="sy-report">
+<div class="sy-report-head"><span class="sy-wmo">WMO ${rep.iiiii}</span>${stype?`<span class="sy-stype">${stype}</span>`:''}</div>
+<div class="sy-grid">${tiles.join('')}</div>
+${wxBlock}
+<div class="sy-raw">${escHtml(rep.raw)}</div>
+</div>`;
 }
 
 const SYNOP_SOURCES=[
@@ -1531,9 +1635,7 @@ function updateSynopStationCard(stationKey){
     <div><div class="synop-stn-icao">${src.label}</div><div class="synop-stn-sub">${parsed.bulletinTime||'—'}</div></div>
   </div>
 </div>
-<div style="padding:0 10px 6px;">
-${parsed.reports.length?parsed.reports.map(renderSynopReport).join('<div style="height:6px"></div>'):'<div class="loading-msg">No decodable reports in bulletin</div>'}
-</div>
+${parsed.reports.length?parsed.reports.map(renderSynopReport).join(''):'<div class="loading-msg" style="padding:12px 14px">No decodable reports in bulletin</div>'}
 <div class="synop-src-lbl">${src.label} · ${src.type}</div>
 <div class="synop-raw-str">${escHtml((d.rawText||'').slice(0,400))}</div>
 </div>`;
