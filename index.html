@@ -251,6 +251,24 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
 .obs-card-title{font-family:var(--cond);font-weight:800;font-size:13px;letter-spacing:1.5px;color:var(--acc);text-transform:uppercase;margin:0 0 9px 0;}
 .loading-msg{padding:18px;color:var(--muted);font-family:var(--cond);font-size:11px;letter-spacing:1px;text-align:center;}
 
+/* SYNOP CODE TABLES */
+.ref-tbl-wrap{border-radius:var(--r);overflow:hidden;border:1px solid var(--border);margin-bottom:10px;}
+.ref-tbl-title{font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);padding:8px 12px;background:rgba(27,124,255,0.07);border-bottom:1px solid var(--border);}
+.code-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.code-tbl td{padding:5px 10px;border-bottom:1px solid rgba(30,50,80,0.35);vertical-align:top;line-height:1.4;}
+.code-tbl td:first-child{color:var(--acc);font-weight:700;white-space:nowrap;min-width:40px;font-size:12px;}
+.code-tbl td:last-child{color:rgba(200,225,255,0.85);font-family:var(--sans);font-size:11px;}
+.code-tbl tr:last-child td{border-bottom:none;}
+.code-tbl .group-hdr td{background:rgba(0,0,0,0.28);color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;padding:5px 10px;}
+.code-tbl .group-hdr td:first-child{color:var(--muted);}
+.synop-struct{font-family:var(--mono);font-size:9.5px;color:#b0ccee;background:rgba(0,0,0,0.35);padding:11px 13px;border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px;line-height:2;letter-spacing:.2px;word-break:break-all;}
+.synop-struct .ss0{color:var(--muted);}
+.synop-struct .ss1{color:var(--acc);}
+.synop-struct .ss3{color:var(--ok);}
+.synop-struct .ss5{color:var(--warn);}
+.synop-quickidx{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.synop-quickidx a{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.8px;padding:4px 9px;border:1px solid var(--border);border-radius:5px;color:var(--acc);background:rgba(85,193,255,0.05);cursor:pointer;}
+.synop-quickidx a:active{background:rgba(85,193,255,0.15);}
 /* SPECI BANNER */
 .speci-banner{position:fixed;top:0;left:0;right:0;z-index:999;background:linear-gradient(90deg,var(--alert),#ff8a5b,var(--alert));color:#fff;padding:11px 16px;text-align:center;font-family:var(--cond);font-weight:800;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;box-shadow:0 4px 20px rgba(255,95,95,0.5);display:none;word-break:break-word;}
 .speci-banner.active{display:block;}
@@ -433,65 +451,438 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
         <div id="synop-card-tncc"><div class="loading-msg">Loading Curaçao SYNOP…</div></div>
       </div>
 
-      <!-- FM-12 Rules -->
+      <!-- FM-12 Coding Reference -->
       <div class="sub-panel" id="synop-sub-rules">
+
+        <!-- Quick Index -->
+        <div class="synop-quickidx">
+          <a onclick="document.getElementById('sr-struct').scrollIntoView({behavior:'smooth',block:'start'})">Structure</a>
+          <a onclick="document.getElementById('sr-ir').scrollIntoView({behavior:'smooth',block:'start'})">iR</a>
+          <a onclick="document.getElementById('sr-ix').scrollIntoView({behavior:'smooth',block:'start'})">iX</a>
+          <a onclick="document.getElementById('sr-h').scrollIntoView({behavior:'smooth',block:'start'})">h</a>
+          <a onclick="document.getElementById('sr-vv').scrollIntoView({behavior:'smooth',block:'start'})">VV</a>
+          <a onclick="document.getElementById('sr-n').scrollIntoView({behavior:'smooth',block:'start'})">N</a>
+          <a onclick="document.getElementById('sr-ww').scrollIntoView({behavior:'smooth',block:'start'})">ww</a>
+          <a onclick="document.getElementById('sr-w').scrollIntoView({behavior:'smooth',block:'start'})">W1W2</a>
+          <a onclick="document.getElementById('sr-cl').scrollIntoView({behavior:'smooth',block:'start'})">CL</a>
+          <a onclick="document.getElementById('sr-cm').scrollIntoView({behavior:'smooth',block:'start'})">CM</a>
+          <a onclick="document.getElementById('sr-ch').scrollIntoView({behavior:'smooth',block:'start'})">CH</a>
+          <a onclick="document.getElementById('sr-a').scrollIntoView({behavior:'smooth',block:'start'})">Pres a</a>
+          <a onclick="document.getElementById('sr-t').scrollIntoView({behavior:'smooth',block:'start'})">Precip</a>
+          <a onclick="document.getElementById('sr-s3').scrollIntoView({behavior:'smooth',block:'start'})">Sec 3</a>
+        </div>
+
+        <!-- Message Structure -->
+        <div id="sr-struct" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">FM-12 SYNOP — Full Message Structure</div>
+          <div class="synop-struct">
+<span class="ss0">AAXX YYGGiw</span>
+<span class="ss1">IIiii iRiXhVV Nddff [00fff] [1SnTTT] [2SnTdTdTd] [3PPPP] [4PPPP] [5appp] [6RRRt] [7wwW1W2] [8NhCLCMCH] [9GGgg]</span>
+<span class="ss3">333 [0...] [1SnTxTxTx] [2SnTnTnTn] [3Ejjj] [55SSS] [6RRRt] [7R24R24R24R24]</span>
+<span class="ss5">555 [national groups…]</span>
+          </div>
+          <div style="padding:6px 12px 9px;font-size:10px;color:var(--muted);font-family:var(--cond);line-height:1.8;">
+            <span style="color:var(--muted)">■</span> Gray = Section 0 (AAXX header) &nbsp;
+            <span style="color:var(--acc)">■</span> Blue = Section 1 (mandatory data) &nbsp;
+            <span style="color:var(--ok)">■</span> Green = Section 3 (climate) &nbsp;
+            <span style="color:var(--warn)">■</span> Amber = Section 5 (national)
+          </div>
+        </div>
+
+        <!-- Obs Times -->
         <div class="ref-section">
-          <div class="ref-head">Observation Times (UTC)</div>
+          <div class="ref-head">Observation Times &amp; Rules (UTC)</div>
           <div class="ref-row"><span class="ref-key">Main synops</span><span class="ref-val">00, 03, 06, 09, 12, 15, 18, 21 UTC — full land surface observation</span></div>
           <div class="ref-row"><span class="ref-key">Intermediate</span><span class="ref-val">01, 07, 13, 19 UTC — some stations (check local SOP)</span></div>
           <div class="ref-row"><span class="ref-key">Ship (SHIP)</span><span class="ref-val">00, 06, 12, 18 UTC standard</span></div>
           <div class="ref-row"><span class="ref-key">Deadline</span><span class="ref-val">Transmit within 15 min of observation time for main synops</span></div>
+          <div class="ref-row"><span class="ref-key">YY GG iw</span><span class="ref-val">Day of month · UTC hour · wind units indicator (iw)</span></div>
         </div>
+
+        <!-- Section 1 Fields -->
         <div class="ref-section">
-          <div class="ref-head">Section 1 — Land Surface Data</div>
-          <div class="ref-row"><span class="ref-key">IIiii</span><span class="ref-val">WMO station number (5 digits)</span></div>
-          <div class="ref-row"><span class="ref-key">iRiXhVV</span><span class="ref-val">iR = precipitation indicator · iX = weather/station type indicator · h = lowest cloud base height code · VV = visibility code (see table below)</span></div>
-          <div class="ref-row"><span class="ref-key">Nddff</span><span class="ref-val">N = total cloud cover (0–9 oktas) · dd = wind direction in tens of degrees · ff = wind speed (units per iX)</span></div>
-          <div class="ref-row"><span class="ref-key">00fff</span><span class="ref-val">Wind speed extension when ff = 99 (actual speed ≥ 99 units)</span></div>
-          <div class="ref-row"><span class="ref-key">1SnTTT</span><span class="ref-val">Air temperature in tenths of °C · Sn = 0 positive, 1 negative</span></div>
-          <div class="ref-row"><span class="ref-key">2SnTdTdTd</span><span class="ref-val">Dew-point in tenths of °C (or 29RHR H for relative humidity when Sn = 9)</span></div>
-          <div class="ref-row"><span class="ref-key">3PPPP</span><span class="ref-val">Station-level pressure in tenths of hPa (leading 9 or 10 dropped)</span></div>
-          <div class="ref-row"><span class="ref-key">4PPPP</span><span class="ref-val">Mean sea-level pressure (QNH) in tenths of hPa</span></div>
-          <div class="ref-row"><span class="ref-key">5appp</span><span class="ref-val">Pressure tendency: a = characteristic code (0–8) · ppp = 3 h change in tenths of hPa</span></div>
-          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation amount in mm · t = duration period code</span></div>
-          <div class="ref-row"><span class="ref-key">7wwW1W2</span><span class="ref-val">ww = present weather code (00–99) · W1 = past weather 1 · W2 = past weather 2</span></div>
-          <div class="ref-row"><span class="ref-key">8NhCLCMCH</span><span class="ref-val">Nh = low-cloud cover (oktas) · CL = low cloud type · CM = medium cloud type · CH = high cloud type</span></div>
-          <div class="ref-row"><span class="ref-key">9GGgg</span><span class="ref-val">Time of observation when different from bulletin header</span></div>
+          <div class="ref-head">Section 1 — Field Order</div>
+          <div class="ref-row"><span class="ref-key">IIiii</span><span class="ref-val">WMO station index number (5 digits)</span></div>
+          <div class="ref-row"><span class="ref-key">iRiXhVV</span><span class="ref-val">Precip indicator · Station type/weather indicator · Lowest cloud base height · Visibility</span></div>
+          <div class="ref-row"><span class="ref-key">Nddff</span><span class="ref-val">Total cloud cover · Wind direction (tens of degrees) · Wind speed (units per iw)</span></div>
+          <div class="ref-row"><span class="ref-key">00fff</span><span class="ref-val">Wind speed extension — used when ff = 99 (actual speed ≥ 99 units)</span></div>
+          <div class="ref-row"><span class="ref-key">1SnTTT</span><span class="ref-val">Air temperature in tenths of °C · Sn: 0 = positive, 1 = negative</span></div>
+          <div class="ref-row"><span class="ref-key">2SnTdTdTd</span><span class="ref-val">Dew-point in tenths of °C · or 29RHRhR for relative humidity (Sn=9)</span></div>
+          <div class="ref-row"><span class="ref-key">3PPPP</span><span class="ref-val">Station-level pressure in tenths of hPa (drop leading 9 or 10)</span></div>
+          <div class="ref-row"><span class="ref-key">4PPPP</span><span class="ref-val">Sea-level pressure (QFF) in tenths of hPa</span></div>
+          <div class="ref-row"><span class="ref-key">5appp</span><span class="ref-val">Pressure tendency: a = characteristic (0–8) · ppp = 3 h change in tenths hPa</span></div>
+          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation amount (tenths of mm) · t = duration period code</span></div>
+          <div class="ref-row"><span class="ref-key">7wwW1W2</span><span class="ref-val">Present weather (00–99) · Past weather 1 · Past weather 2</span></div>
+          <div class="ref-row"><span class="ref-key">8NhCLCMCH</span><span class="ref-val">Low cloud cover (oktas) · Low / Medium / High cloud type</span></div>
+          <div class="ref-row"><span class="ref-key">9GGgg</span><span class="ref-val">Actual observation time when different from bulletin header</span></div>
         </div>
-        <div class="ref-section">
-          <div class="ref-head">Section 3 — Supplementary / Climatological Data (333)</div>
-          <div class="ref-row"><span class="ref-key">1SnTxTxTx</span><span class="ref-val">Maximum temperature over observation period (tenths of °C)</span></div>
-          <div class="ref-row"><span class="ref-key">2SnTnTnTn</span><span class="ref-val">Minimum temperature over observation period (tenths of °C)</span></div>
-          <div class="ref-row"><span class="ref-key">3Ejjj</span><span class="ref-val">State of ground (E) and snow / ice depth (jjj)</span></div>
-          <div class="ref-row"><span class="ref-key">55SSS</span><span class="ref-val">Duration of sunshine in tenths of hours since last observation</span></div>
-          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation amount for a specified period</span></div>
+
+        <!-- iR Table -->
+        <div id="sr-ir" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">iR — Precipitation Indicator (Table 1819)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>Precip group 6RRRt included in Section 1 AND Section 3</td></tr>
+            <tr><td>1</td><td>Precip group included in Section 1 only</td></tr>
+            <tr><td>2</td><td>Precip group included in Section 3 only</td></tr>
+            <tr><td>3</td><td>Precip group omitted — no precipitation observed</td></tr>
+            <tr><td>4</td><td>Precip group omitted — station not equipped to measure precipitation</td></tr>
+          </tbody></table>
         </div>
-        <div class="ref-section">
-          <div class="ref-head">Visibility Code (VV)</div>
-          <div class="ref-row"><span class="ref-key">00</span><span class="ref-val">&lt; 100 m</span></div>
-          <div class="ref-row"><span class="ref-key">01 – 50</span><span class="ref-val">VV × 100 m (e.g. 15 = 1 500 m)</span></div>
-          <div class="ref-row"><span class="ref-key">51 – 55</span><span class="ref-val">(VV − 50) km (e.g. 52 = 2 km)</span></div>
-          <div class="ref-row"><span class="ref-key">56 – 80</span><span class="ref-val">Stepped scale — see WMO No. 306 Table 4377</span></div>
-          <div class="ref-row"><span class="ref-key">89</span><span class="ref-val">≥ 70 km</span></div>
-          <div class="ref-row"><span class="ref-key">90 – 99</span><span class="ref-val">Special codes: 90 = &lt; 0.05 km … 99 = ≥ 50 km</span></div>
+
+        <!-- iX Table -->
+        <div id="sr-ix" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">iX — Station Type / Weather Indicator (Table 1860)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>1</td><td>Manned station — weather group 7wwW1W2 included</td></tr>
+            <tr><td>2</td><td>Manned station — weather group omitted (no significant phenomenon)</td></tr>
+            <tr><td>3</td><td>Manned station — weather group omitted (station not required to report)</td></tr>
+            <tr><td>4</td><td>Automatic station — weather group included (ww from Table 4677)</td></tr>
+            <tr><td>5</td><td>Automatic station — weather group omitted (no significant phenomenon)</td></tr>
+            <tr><td>6</td><td>Automatic station — weather group omitted (station not observing weather)</td></tr>
+            <tr><td>7</td><td>Automatic station — weather observed by sensors not in Table 4677</td></tr>
+          </tbody></table>
         </div>
-        <div class="ref-section">
-          <div class="ref-head">Pressure Tendency (a — group 5)</div>
-          <div class="ref-row"><span class="ref-key">0</span><span class="ref-val">Rising then falling — now same or higher than 3 h ago</span></div>
-          <div class="ref-row"><span class="ref-key">1</span><span class="ref-val">Rising then steady, or rising slowly</span></div>
-          <div class="ref-row"><span class="ref-key">2</span><span class="ref-val">Rising steadily or unsteadily</span></div>
-          <div class="ref-row"><span class="ref-key">3</span><span class="ref-val">Falling or steady, then rising; now higher than 3 h ago</span></div>
-          <div class="ref-row"><span class="ref-key">4</span><span class="ref-val">Steady — same as 3 h ago</span></div>
-          <div class="ref-row"><span class="ref-key">5</span><span class="ref-val">Falling then rising — now same or lower than 3 h ago</span></div>
-          <div class="ref-row"><span class="ref-key">6</span><span class="ref-val">Falling then steady, or falling slowly</span></div>
-          <div class="ref-row"><span class="ref-key">7</span><span class="ref-val">Falling steadily or unsteadily</span></div>
-          <div class="ref-row"><span class="ref-key">8</span><span class="ref-val">Steady or rising, then falling; now lower than 3 h ago</span></div>
+
+        <!-- h Table -->
+        <div id="sr-h" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">h — Lowest Cloud Base Height (Table 1600)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>&lt; 50 m &nbsp;&nbsp;(0 – 164 ft)</td></tr>
+            <tr><td>1</td><td>50 – 99 m &nbsp;&nbsp;(165 – 324 ft)</td></tr>
+            <tr><td>2</td><td>100 – 199 m &nbsp;&nbsp;(325 – 654 ft)</td></tr>
+            <tr><td>3</td><td>200 – 299 m &nbsp;&nbsp;(655 – 981 ft)</td></tr>
+            <tr><td>4</td><td>300 – 599 m &nbsp;&nbsp;(982 – 1 969 ft)</td></tr>
+            <tr><td>5</td><td>600 – 999 m &nbsp;&nbsp;(1 970 – 3 280 ft)</td></tr>
+            <tr><td>6</td><td>1 000 – 1 499 m &nbsp;&nbsp;(3 281 – 4 921 ft)</td></tr>
+            <tr><td>7</td><td>1 500 – 1 999 m &nbsp;&nbsp;(4 922 – 6 561 ft)</td></tr>
+            <tr><td>8</td><td>2 000 – 2 499 m &nbsp;&nbsp;(6 562 – 8 202 ft)</td></tr>
+            <tr><td>9</td><td>≥ 2 500 m; or no clouds (≥ 8 203 ft)</td></tr>
+            <tr><td>/</td><td>Height unknown or cloud obscured by fog</td></tr>
+          </tbody></table>
         </div>
-        <div class="ref-section">
-          <div class="ref-head">Wind Units (iX indicator)</div>
-          <div class="ref-row"><span class="ref-key">iX = 1 / 2</span><span class="ref-val">Wind in m/s (iw = 0 or 1 in AAXX header)</span></div>
-          <div class="ref-row"><span class="ref-key">iX = 3 / 4</span><span class="ref-val">Wind in knots (iw = 3 or 4 in AAXX header)</span></div>
+
+        <!-- VV Table -->
+        <div id="sr-vv" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">VV — Visibility (Table 4377 — complete)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>00</td><td>Less than 100 m</td></tr>
+            <tr><td>01–50</td><td>VV × 100 m &nbsp;(01 = 100 m … 50 = 5 000 m)</td></tr>
+            <tr><td>51</td><td>6 km</td></tr>
+            <tr><td>52</td><td>7 km</td></tr>
+            <tr><td>53</td><td>8 km</td></tr>
+            <tr><td>54</td><td>9 km</td></tr>
+            <tr><td>55</td><td>10 km</td></tr>
+            <tr><td>56</td><td>11 km</td></tr>
+            <tr><td>57</td><td>12 km</td></tr>
+            <tr><td>58</td><td>13 km</td></tr>
+            <tr><td>59</td><td>14 km</td></tr>
+            <tr><td>60</td><td>15 km</td></tr>
+            <tr><td>61–70</td><td>16 – 25 km &nbsp;(VV − 45)</td></tr>
+            <tr><td>71</td><td>30 km</td></tr>
+            <tr><td>72</td><td>35 km</td></tr>
+            <tr><td>73</td><td>40 km</td></tr>
+            <tr><td>74</td><td>45 km</td></tr>
+            <tr><td>75</td><td>50 km</td></tr>
+            <tr><td>76</td><td>55 km</td></tr>
+            <tr><td>77</td><td>60 km</td></tr>
+            <tr><td>78</td><td>65 km</td></tr>
+            <tr><td>79</td><td>70 km</td></tr>
+            <tr><td>80</td><td>75 km</td></tr>
+            <tr><td>81</td><td>80 km</td></tr>
+            <tr><td>82</td><td>85 km</td></tr>
+            <tr><td>83</td><td>90 km</td></tr>
+            <tr><td>84</td><td>95 km</td></tr>
+            <tr><td>85</td><td>100 km</td></tr>
+            <tr><td>86</td><td>110 km</td></tr>
+            <tr><td>87</td><td>120 km</td></tr>
+            <tr><td>88</td><td>130 km</td></tr>
+            <tr><td>89</td><td>140 km or more</td></tr>
+            <tr class="group-hdr"><td colspan="2">90–99 Special precision codes</td></tr>
+            <tr><td>90</td><td>&lt; 0.05 km</td></tr>
+            <tr><td>91</td><td>0.05 km</td></tr>
+            <tr><td>92</td><td>0.2 km</td></tr>
+            <tr><td>93</td><td>0.5 km</td></tr>
+            <tr><td>94</td><td>1 km</td></tr>
+            <tr><td>95</td><td>2 km</td></tr>
+            <tr><td>96</td><td>4 km</td></tr>
+            <tr><td>97</td><td>10 km</td></tr>
+            <tr><td>98</td><td>20 km</td></tr>
+            <tr><td>99</td><td>50 km or more</td></tr>
+          </tbody></table>
         </div>
+
+        <!-- N Table -->
+        <div id="sr-n" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">N — Total Cloud Cover (Table 2700)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>SKC — 0 oktas (cloudless)</td></tr>
+            <tr><td>1</td><td>1 okta or less, but not zero</td></tr>
+            <tr><td>2</td><td>2 oktas</td></tr>
+            <tr><td>3</td><td>3 oktas</td></tr>
+            <tr><td>4</td><td>4 oktas</td></tr>
+            <tr><td>5</td><td>5 oktas</td></tr>
+            <tr><td>6</td><td>6 oktas</td></tr>
+            <tr><td>7</td><td>7 oktas or more, but not 8 (BKN)</td></tr>
+            <tr><td>8</td><td>8 oktas — overcast (OVC)</td></tr>
+            <tr><td>9</td><td>Sky obscured by fog or other phenomenon</td></tr>
+            <tr><td>/</td><td>Cloud cover not observable (darkness, sand, smoke…)</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- ww Table - all 100 codes -->
+        <div id="sr-ww" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">ww — Present Weather (Table 4677 — all 100 codes)</div>
+          <table class="code-tbl"><tbody>
+            <tr class="group-hdr"><td colspan="2">00 – 09 · No significant weather at obs time</td></tr>
+            <tr><td>00</td><td>Cloud development not observed or not observable during past hour</td></tr>
+            <tr><td>01</td><td>Clouds generally dissolving or becoming less developed</td></tr>
+            <tr><td>02</td><td>State of sky on the whole unchanged</td></tr>
+            <tr><td>03</td><td>Clouds generally forming or developing</td></tr>
+            <tr><td>04</td><td>Visibility reduced by smoke</td></tr>
+            <tr><td>05</td><td>Haze</td></tr>
+            <tr><td>06</td><td>Widespread dust in suspension in the air (not raised by wind)</td></tr>
+            <tr><td>07</td><td>Dust or sand raised by wind at or near the station</td></tr>
+            <tr><td>08</td><td>Well-developed dust whirl(s) or sand whirl(s)</td></tr>
+            <tr><td>09</td><td>Duststorm or sandstorm within sight or at station during past hour</td></tr>
+            <tr class="group-hdr"><td colspan="2">10 – 19 · Phenomena near station or past hour only</td></tr>
+            <tr><td>10</td><td>Mist (visibility ≥ 1 km)</td></tr>
+            <tr><td>11</td><td>Patches of shallow fog or ice fog at station</td></tr>
+            <tr><td>12</td><td>More or less continuous shallow fog or ice fog at station</td></tr>
+            <tr><td>13</td><td>Lightning visible, no thunder heard</td></tr>
+            <tr><td>14</td><td>Precipitation within sight, not reaching the ground (virga)</td></tr>
+            <tr><td>15</td><td>Precipitation within sight, reaching ground — distant (&gt; 5 km)</td></tr>
+            <tr><td>16</td><td>Precipitation within sight, reaching ground — near station (≤ 5 km)</td></tr>
+            <tr><td>17</td><td>Thunderstorm, but no precipitation at time of observation</td></tr>
+            <tr><td>18</td><td>Squalls at or within sight of station during past hour</td></tr>
+            <tr><td>19</td><td>Funnel cloud(s) — tornado or waterspout within sight</td></tr>
+            <tr class="group-hdr"><td colspan="2">20 – 29 · Past hour phenomena — NOT at obs time</td></tr>
+            <tr><td>20</td><td>Drizzle (not freezing) or snow grains — not in showers</td></tr>
+            <tr><td>21</td><td>Rain (not freezing) — not in showers</td></tr>
+            <tr><td>22</td><td>Snow — not in showers</td></tr>
+            <tr><td>23</td><td>Rain and snow or ice pellets — not in showers</td></tr>
+            <tr><td>24</td><td>Freezing drizzle or freezing rain</td></tr>
+            <tr><td>25</td><td>Rain shower(s)</td></tr>
+            <tr><td>26</td><td>Snow shower(s) and/or hail shower(s)</td></tr>
+            <tr><td>27</td><td>Hail shower(s)</td></tr>
+            <tr><td>28</td><td>Fog or ice fog</td></tr>
+            <tr><td>29</td><td>Thunderstorm (with or without precipitation)</td></tr>
+            <tr class="group-hdr"><td colspan="2">30 – 39 · Dust / Sand / Drifting Snow</td></tr>
+            <tr><td>30</td><td>Slight or moderate duststorm/sandstorm — decreasing</td></tr>
+            <tr><td>31</td><td>Slight or moderate duststorm/sandstorm — no appreciable change</td></tr>
+            <tr><td>32</td><td>Slight or moderate duststorm/sandstorm — beginning or increasing</td></tr>
+            <tr><td>33</td><td>Severe duststorm or sandstorm — decreasing</td></tr>
+            <tr><td>34</td><td>Severe duststorm or sandstorm — no appreciable change</td></tr>
+            <tr><td>35</td><td>Severe duststorm or sandstorm — beginning or increasing</td></tr>
+            <tr><td>36</td><td>Slight or moderate drifting snow — generally low (below eye level)</td></tr>
+            <tr><td>37</td><td>Heavy drifting snow — generally low</td></tr>
+            <tr><td>38</td><td>Slight or moderate blowing snow — generally high (above eye level)</td></tr>
+            <tr><td>39</td><td>Heavy blowing snow — generally high</td></tr>
+            <tr class="group-hdr"><td colspan="2">40 – 49 · Fog / Ice Fog</td></tr>
+            <tr><td>40</td><td>Fog or ice fog at a distance but not at station</td></tr>
+            <tr><td>41</td><td>Fog or ice fog in patches</td></tr>
+            <tr><td>42</td><td>Fog or ice fog, sky visible — becoming thinner since previous hour</td></tr>
+            <tr><td>43</td><td>Fog or ice fog, sky obscured — becoming thinner since previous hour</td></tr>
+            <tr><td>44</td><td>Fog or ice fog, sky visible — no appreciable change</td></tr>
+            <tr><td>45</td><td>Fog or ice fog, sky obscured — no appreciable change</td></tr>
+            <tr><td>46</td><td>Fog or ice fog, sky visible — becoming thicker since previous hour</td></tr>
+            <tr><td>47</td><td>Fog or ice fog, sky obscured — becoming thicker since previous hour</td></tr>
+            <tr><td>48</td><td>Fog, depositing rime — sky visible</td></tr>
+            <tr><td>49</td><td>Fog, depositing rime — sky obscured</td></tr>
+            <tr class="group-hdr"><td colspan="2">50 – 59 · Drizzle</td></tr>
+            <tr><td>50</td><td>Drizzle, not freezing — intermittent, slight at obs time</td></tr>
+            <tr><td>51</td><td>Drizzle, not freezing — continuous, slight</td></tr>
+            <tr><td>52</td><td>Drizzle, not freezing — intermittent, moderate at obs time</td></tr>
+            <tr><td>53</td><td>Drizzle, not freezing — continuous, moderate</td></tr>
+            <tr><td>54</td><td>Drizzle, not freezing — intermittent, heavy at obs time</td></tr>
+            <tr><td>55</td><td>Drizzle, not freezing — continuous, heavy</td></tr>
+            <tr><td>56</td><td>Drizzle, freezing — slight</td></tr>
+            <tr><td>57</td><td>Drizzle, freezing — moderate or heavy (dense)</td></tr>
+            <tr><td>58</td><td>Drizzle and rain — slight</td></tr>
+            <tr><td>59</td><td>Drizzle and rain — moderate or heavy</td></tr>
+            <tr class="group-hdr"><td colspan="2">60 – 69 · Rain</td></tr>
+            <tr><td>60</td><td>Rain, not freezing — intermittent, slight at obs time</td></tr>
+            <tr><td>61</td><td>Rain, not freezing — continuous, slight</td></tr>
+            <tr><td>62</td><td>Rain, not freezing — intermittent, moderate at obs time</td></tr>
+            <tr><td>63</td><td>Rain, not freezing — continuous, moderate</td></tr>
+            <tr><td>64</td><td>Rain, not freezing — intermittent, heavy at obs time</td></tr>
+            <tr><td>65</td><td>Rain, not freezing — continuous, heavy</td></tr>
+            <tr><td>66</td><td>Rain, freezing — slight</td></tr>
+            <tr><td>67</td><td>Rain, freezing — moderate or heavy</td></tr>
+            <tr><td>68</td><td>Rain or drizzle and snow mixed — slight</td></tr>
+            <tr><td>69</td><td>Rain or drizzle and snow mixed — moderate or heavy</td></tr>
+            <tr class="group-hdr"><td colspan="2">70 – 79 · Snow / Ice Crystals</td></tr>
+            <tr><td>70</td><td>Snow — intermittent, slight at obs time</td></tr>
+            <tr><td>71</td><td>Snow — continuous, slight</td></tr>
+            <tr><td>72</td><td>Snow — intermittent, moderate at obs time</td></tr>
+            <tr><td>73</td><td>Snow — continuous, moderate</td></tr>
+            <tr><td>74</td><td>Snow — intermittent, heavy at obs time</td></tr>
+            <tr><td>75</td><td>Snow — continuous, heavy</td></tr>
+            <tr><td>76</td><td>Diamond dust (with or without fog)</td></tr>
+            <tr><td>77</td><td>Snow grains (with or without fog)</td></tr>
+            <tr><td>78</td><td>Isolated star-like snow crystals (with or without fog)</td></tr>
+            <tr><td>79</td><td>Ice pellets</td></tr>
+            <tr class="group-hdr"><td colspan="2">80 – 89 · Showers</td></tr>
+            <tr><td>80</td><td>Rain shower(s) — slight</td></tr>
+            <tr><td>81</td><td>Rain shower(s) — moderate or heavy</td></tr>
+            <tr><td>82</td><td>Rain shower(s) — violent</td></tr>
+            <tr><td>83</td><td>Shower(s) of rain and snow mixed — slight</td></tr>
+            <tr><td>84</td><td>Shower(s) of rain and snow mixed — moderate or heavy</td></tr>
+            <tr><td>85</td><td>Snow shower(s) — slight</td></tr>
+            <tr><td>86</td><td>Snow shower(s) — moderate or heavy</td></tr>
+            <tr><td>87</td><td>Shower(s) of snow pellets or small hail ± rain — slight</td></tr>
+            <tr><td>88</td><td>Shower(s) of snow pellets or small hail ± rain — moderate or heavy</td></tr>
+            <tr><td>89</td><td>Shower(s) of hail, not associated with thunder — slight</td></tr>
+            <tr class="group-hdr"><td colspan="2">90 – 99 · Thunderstorms</td></tr>
+            <tr><td>90</td><td>Shower(s) of hail, not associated with thunder — moderate or heavy</td></tr>
+            <tr><td>91</td><td>Slight rain; thunderstorm during past hour but not at obs time</td></tr>
+            <tr><td>92</td><td>Moderate or heavy rain; thunderstorm during past hour but not at obs time</td></tr>
+            <tr><td>93</td><td>Slight snow / rain &amp; snow / hail; thunderstorm during past hour</td></tr>
+            <tr><td>94</td><td>Moderate or heavy snow / rain &amp; snow / hail; thunderstorm during past hour</td></tr>
+            <tr><td>95</td><td>Thunderstorm, slight or moderate — no hail, with rain and/or snow</td></tr>
+            <tr><td>96</td><td>Thunderstorm, slight or moderate — with hail at obs time</td></tr>
+            <tr><td>97</td><td>Thunderstorm, heavy — no hail, with rain and/or snow</td></tr>
+            <tr><td>98</td><td>Thunderstorm combined with duststorm or sandstorm</td></tr>
+            <tr><td>99</td><td>Thunderstorm, heavy — with hail at obs time</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- W1/W2 Past Weather -->
+        <div id="sr-w" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">W1/W2 — Past Weather (Table 4561)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>Cloud covering ½ or less of sky throughout observation period</td></tr>
+            <tr><td>1</td><td>Cloud &gt; ½ during part of period and ≤ ½ during part of the period</td></tr>
+            <tr><td>2</td><td>Cloud covering more than ½ of sky throughout the observation period</td></tr>
+            <tr><td>3</td><td>Sandstorm, duststorm, or blowing snow</td></tr>
+            <tr><td>4</td><td>Fog, ice fog, or thick haze</td></tr>
+            <tr><td>5</td><td>Drizzle</td></tr>
+            <tr><td>6</td><td>Rain</td></tr>
+            <tr><td>7</td><td>Snow or rain and snow mixed</td></tr>
+            <tr><td>8</td><td>Shower(s)</td></tr>
+            <tr><td>9</td><td>Thunderstorm(s), with or without precipitation</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- CL Table -->
+        <div id="sr-cl" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">CL — Low Cloud Type (Table 0513)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>No CL clouds</td></tr>
+            <tr><td>1</td><td>Cu humilis or Cu fractus (not bad weather)</td></tr>
+            <tr><td>2</td><td>Cu mediocris or congestus, with or without Cu hum/frac or Sc</td></tr>
+            <tr><td>3</td><td>Cb calvus — without clear-cut cirriform top or anvil</td></tr>
+            <tr><td>4</td><td>Sc cumulogenitus — formed by spreading out of Cu</td></tr>
+            <tr><td>5</td><td>Sc other than Sc cumulogenitus</td></tr>
+            <tr><td>6</td><td>St nebulosus or St fractus (not bad weather)</td></tr>
+            <tr><td>7</td><td>St fractus or Cu fractus — bad weather (pannus)</td></tr>
+            <tr><td>8</td><td>Cu and Sc with bases at different levels</td></tr>
+            <tr><td>9</td><td>Cb capillatus (with or without Cb calvus, Ac, Sc or St)</td></tr>
+            <tr><td>/</td><td>CL invisible due to fog, blowing snow, sandstorm, etc.</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- CM Table -->
+        <div id="sr-cm" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">CM — Medium Cloud Type (Table 0515)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>No CM clouds</td></tr>
+            <tr><td>1</td><td>As translucidus</td></tr>
+            <tr><td>2</td><td>As opacus or Ns</td></tr>
+            <tr><td>3</td><td>Ac translucidus at a single level</td></tr>
+            <tr><td>4</td><td>Patches (often lenticular) of Ac translucidus at different levels</td></tr>
+            <tr><td>5</td><td>Ac translucidus in bands; or one or more layers of Ac translucidus/opacus progressively invading the sky</td></tr>
+            <tr><td>6</td><td>Ac cumulogenitus — formed by spreading out of Cu or Cb</td></tr>
+            <tr><td>7</td><td>Ac translucidus/opacus in ≥ 2 layers; or Ac opacus in one layer not progressively invading; or As/Ns with Ac</td></tr>
+            <tr><td>8</td><td>Ac castellanus or floccus</td></tr>
+            <tr><td>9</td><td>Ac of chaotic sky — generally at several levels</td></tr>
+            <tr><td>/</td><td>CM invisible due to fog, blowing snow, sandstorm, etc.</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- CH Table -->
+        <div id="sr-ch" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">CH — High Cloud Type (Table 0509)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>No CH clouds</td></tr>
+            <tr><td>1</td><td>Ci fibratus, sometimes uncinus — not progressively invading sky</td></tr>
+            <tr><td>2</td><td>Ci spissatus in patches or entangled sheaves — usually not increasing; sometimes CB top remnants</td></tr>
+            <tr><td>3</td><td>Ci spissatus cumulonimbogenitus</td></tr>
+            <tr><td>4</td><td>Ci uncinus or fibratus — progressively invading and thickening</td></tr>
+            <tr><td>5</td><td>Ci (often in bands) and Cs, or Cs alone — progressively invading; continuous layer generally below 45°</td></tr>
+            <tr><td>6</td><td>Ci (often in bands) and Cs, or Cs alone — progressively invading; continuous layer generally above 45°</td></tr>
+            <tr><td>7</td><td>Cs covering the whole sky</td></tr>
+            <tr><td>8</td><td>Cs not progressively invading and not covering whole sky</td></tr>
+            <tr><td>9</td><td>Cc alone, or Cc predominant among CH clouds</td></tr>
+            <tr><td>/</td><td>CH invisible due to fog, blowing snow, sandstorm, etc.</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- Pressure Tendency -->
+        <div id="sr-a" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">a — Pressure Tendency Characteristic (Table 0200)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>Rising then falling — now same or higher than 3 h ago</td></tr>
+            <tr><td>1</td><td>Rising then steady; or rising slowly</td></tr>
+            <tr><td>2</td><td>Rising steadily or unsteadily</td></tr>
+            <tr><td>3</td><td>Falling or steady, then rising; now higher than 3 h ago</td></tr>
+            <tr><td>4</td><td>Steady — same pressure as 3 h ago</td></tr>
+            <tr><td>5</td><td>Falling then rising — now same or lower than 3 h ago</td></tr>
+            <tr><td>6</td><td>Falling then steady; or falling slowly</td></tr>
+            <tr><td>7</td><td>Falling steadily or unsteadily</td></tr>
+            <tr><td>8</td><td>Steady or rising, then falling; now lower than 3 h ago</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- Wind Units -->
+        <div class="ref-tbl-wrap">
+          <div class="ref-tbl-title">iw — Wind Units (AAXX Header)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>Anemometer reading — speed in m/s</td></tr>
+            <tr><td>1</td><td>Estimated — speed in m/s</td></tr>
+            <tr><td>3</td><td>Anemometer reading — speed in knots</td></tr>
+            <tr><td>4</td><td>Estimated — speed in knots</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- Precipitation Duration -->
+        <div id="sr-t" class="ref-tbl-wrap">
+          <div class="ref-tbl-title">t — Precipitation Duration Period (Table 4019)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>0</td><td>Not used / period unknown</td></tr>
+            <tr><td>1</td><td>6 hours preceding observation</td></tr>
+            <tr><td>2</td><td>12 hours preceding observation</td></tr>
+            <tr><td>3</td><td>18 hours preceding observation</td></tr>
+            <tr><td>4</td><td>24 hours preceding observation</td></tr>
+            <tr><td>5</td><td>1 hour preceding observation</td></tr>
+            <tr><td>6</td><td>2 hours preceding observation</td></tr>
+            <tr><td>7</td><td>3 hours preceding observation</td></tr>
+            <tr><td>8</td><td>9 hours preceding observation</td></tr>
+            <tr><td>9</td><td>15 hours preceding observation</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- RRR Precipitation Amount -->
+        <div class="ref-tbl-wrap">
+          <div class="ref-tbl-title">RRR — Precipitation Amount (Table 3590)</div>
+          <table class="code-tbl"><tbody>
+            <tr><td>000</td><td>No precipitation (trace = 0.0 mm)</td></tr>
+            <tr><td>001–989</td><td>Amount in tenths of mm &nbsp;(001 = 0.1 mm … 989 = 98.9 mm)</td></tr>
+            <tr><td>990</td><td>Trace — amount less than 0.05 mm</td></tr>
+            <tr><td>991–999</td><td>Reserved / national use</td></tr>
+          </tbody></table>
+        </div>
+
+        <!-- Section 3 -->
+        <div id="sr-s3" class="ref-section">
+          <div class="ref-head">Section 3 — Climatological Data (333)</div>
+          <div class="ref-row"><span class="ref-key">1SnTxTxTx</span><span class="ref-val">Maximum temperature in tenths of °C over the observation period</span></div>
+          <div class="ref-row"><span class="ref-key">2SnTnTnTn</span><span class="ref-val">Minimum temperature in tenths of °C over the observation period</span></div>
+          <div class="ref-row"><span class="ref-key">3Ejjj</span><span class="ref-val">E = state of ground code · jjj = snow or ice depth in cm</span></div>
+          <div class="ref-row"><span class="ref-key">55SSS</span><span class="ref-val">Sunshine duration in tenths of hours since last observation</span></div>
+          <div class="ref-row"><span class="ref-key">6RRRt</span><span class="ref-val">Precipitation for specified period (same encoding as Section 1)</span></div>
+          <div class="ref-row"><span class="ref-key">7R24R24R24R24</span><span class="ref-val">24-hour precipitation total in tenths of mm — reported at 06 UTC</span></div>
+        </div>
+
       </div>
     </div>
 
