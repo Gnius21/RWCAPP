@@ -50,17 +50,17 @@ a{color:var(--acc);text-decoration:none;}
 .vis-dot.low{background:var(--alert);box-shadow:0 0 6px var(--alert);}
 
 /* SCROLL */
-.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom));}
-.panel{display:none;padding:10px;padding-bottom:16px;}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.panel{display:none;padding:10px;padding-bottom:20px;}
 .panel.active{display:block;animation:panelIn .22s ease both;}
 @keyframes panelIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
 
-/* BOTTOM NAV — fixed so it always stays above iOS Safari toolbar */
-.nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-top:1px solid var(--border);z-index:100;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+/* TOP NAV */
+.nav{flex-shrink:0;height:var(--nav);display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-bottom:1px solid var(--border);z-index:20;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .nav::-webkit-scrollbar{display:none;}
-.nav-btn{flex:0 0 auto;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1px;font-weight:700;text-transform:uppercase;border-top:2px solid transparent;transition:color .15s,border-color .15s;padding:6px 4px;}
+.nav-btn{flex:0 0 auto;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1px;font-weight:700;text-transform:uppercase;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;padding:6px 4px;}
 .nav-btn .ic{font-size:17px;line-height:1;transition:transform .15s;}
-.nav-btn.active{color:var(--acc);border-top-color:var(--acc);}
+.nav-btn.active{color:var(--acc);border-bottom-color:var(--acc);}
 .nav-btn.active .ic{transform:scale(1.1);}
 
 /* SECTION HEADER */
@@ -303,6 +303,15 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
       <button class="hdr-btn glow" id="refresh-btn" title="Refresh all">↻</button>
     </div>
   </header>
+
+  <nav class="nav" role="tablist">
+    <button class="nav-btn active" data-tab="metar" onclick="switchTab('metar')"><span class="ic">📡</span>METARS</button>
+    <button class="nav-btn" data-tab="taf" onclick="switchTab('taf')"><span class="ic">📊</span>TAF</button>
+    <button class="nav-btn" data-tab="synop" onclick="switchTab('synop')"><span class="ic">🌐</span>SYNOP</button>
+    <button class="nav-btn" data-tab="stations" onclick="switchTab('stations')"><span class="ic">⊞</span>Stations</button>
+    <button class="nav-btn" data-tab="atc" onclick="switchTab('atc')"><span class="ic">🎙</span>ATC</button>
+    <button class="nav-btn" data-tab="weather" onclick="switchTab('weather')"><span class="ic">🌤</span>Weather</button>
+  </nav>
 
   <div class="scroll" id="scrollArea">
 
@@ -936,15 +945,6 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
     </div>
 
   </div><!-- /scroll -->
-
-  <nav class="nav" role="tablist">
-    <button class="nav-btn active" data-tab="metar" onclick="switchTab('metar')"><span class="ic">📡</span>METARS</button>
-    <button class="nav-btn" data-tab="taf" onclick="switchTab('taf')"><span class="ic">📊</span>TAF</button>
-    <button class="nav-btn" data-tab="synop" onclick="switchTab('synop')"><span class="ic">🌐</span>SYNOP</button>
-    <button class="nav-btn" data-tab="stations" onclick="switchTab('stations')"><span class="ic">⊞</span>Stations</button>
-    <button class="nav-btn" data-tab="atc" onclick="switchTab('atc')"><span class="ic">🎙</span>ATC</button>
-    <button class="nav-btn" data-tab="weather" onclick="switchTab('weather')"><span class="ic">🌤</span>Weather</button>
-  </nav>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
