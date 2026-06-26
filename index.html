@@ -209,6 +209,29 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
 .sy-sub{font-family:var(--cond);font-size:9px;color:rgba(160,195,235,0.5);letter-spacing:.3px;line-height:1.4;}
 .sy-wx{padding:7px 13px;font-family:var(--sans);font-size:11px;color:#d6eaff;background:rgba(85,193,255,0.04);border-top:1px solid var(--border);line-height:1.6;}
 .sy-raw{padding:5px 13px 7px;font-family:var(--mono);font-size:9px;color:rgba(160,195,235,0.22);word-break:break-all;line-height:1.5;border-top:1px solid rgba(30,50,80,0.25);}
+/* SYNOP ENCODER */
+.enc-card{border-radius:var(--r2);border:1px solid var(--border);background:rgba(5,18,34,0.97);overflow:hidden;margin-bottom:10px;}
+.enc-hdr{font-family:var(--cond);font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(27,124,255,0.06);}
+.enc-sec{border-bottom:1px solid rgba(30,50,80,0.45);}
+.enc-sec-hdr{font-family:var(--cond);font-weight:700;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);padding:7px 14px 3px;background:rgba(0,0,0,0.18);}
+.enc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.enc-field{background:rgba(3,12,24,0.9);padding:8px 12px;display:flex;flex-direction:column;gap:3px;}
+.enc-field.wide{grid-column:span 2;}
+.enc-lbl{font-family:var(--cond);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.enc-inp{background:rgba(0,0,0,0.45);border:1px solid var(--border);border-radius:4px;color:#e8f4ff;font-family:var(--mono);font-size:13px;padding:5px 8px;width:100%;box-sizing:border-box;outline:none;-webkit-appearance:none;appearance:none;}
+.enc-inp:focus{border-color:var(--acc);background:rgba(27,124,255,0.08);}
+select.enc-inp{background-image:none;}
+select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
+.enc-out-wrap{padding:12px 14px 14px;}
+.enc-out-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.enc-out-lbl{font-family:var(--cond);font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);}
+.enc-copy-btn{font-family:var(--cond);font-weight:700;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:5px;border:1px solid var(--acc);color:var(--acc);background:rgba(27,124,255,0.08);cursor:pointer;}
+.enc-out{font-family:var(--mono);font-size:13px;color:#a8d4ff;background:rgba(0,0,0,0.45);border:1px solid var(--border);border-radius:6px;padding:11px 13px;white-space:pre;overflow-x:auto;line-height:1.9;margin-bottom:10px;letter-spacing:.4px;}
+.enc-bdwn{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
+.enc-row{display:grid;grid-template-columns:76px 1fr;gap:6px;font-size:11px;padding:2px 0;border-bottom:1px solid rgba(30,50,80,0.2);}
+.enc-row:last-child{border-bottom:none;}
+.enc-row-code{font-family:var(--mono);font-weight:700;color:var(--acc);letter-spacing:.5px;white-space:nowrap;}
+.enc-row-desc{color:rgba(200,225,255,0.6);font-family:var(--sans);line-height:1.4;}
 .synop-wx{margin-top:6px;padding:5px 9px;background:rgba(85,193,255,0.06);border-radius:4px;font-size:11px;color:#d6eaff;font-style:italic;line-height:1.45;}
 
 /* STATIONS */
@@ -465,6 +488,7 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
         <button class="sub-tab-btn" data-sub="tncb" onclick="switchSubTab('synop','tncb')">🇧🇶 Bonaire</button>
         <button class="sub-tab-btn" data-sub="tncc" onclick="switchSubTab('synop','tncc')">🇨🇼 Curaçao</button>
         <button class="sub-tab-btn" data-sub="rules" onclick="switchSubTab('synop','rules')">FM-12</button>
+        <button class="sub-tab-btn" data-sub="encode" onclick="switchSubTab('synop','encode')">Encode</button>
       </div>
 
       <div class="sub-panel active" id="synop-sub-tnca">
@@ -475,6 +499,453 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
       </div>
       <div class="sub-panel" id="synop-sub-tncc">
         <div id="synop-card-tncc"><div class="loading-msg">Loading Curaçao SYNOP…</div></div>
+      </div>
+
+      <!-- SYNOP Encoder -->
+      <div class="sub-panel" id="synop-sub-encode">
+        <div style="padding:10px;">
+          <div class="enc-card">
+            <div class="enc-hdr">FM-12 SYNOP Encoder</div>
+
+            <!-- Station & Time -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Station &amp; Time</div>
+              <div class="enc-grid">
+                <div class="enc-field wide">
+                  <div class="enc-lbl">Station (WMO IIIII)</div>
+                  <select class="enc-inp" id="enc-stn" onchange="encStnChange()">
+                    <option value="78988">78988 – TNCA Aruba (Beatrix)</option>
+                    <option value="78990">78990 – TNCB Bonaire (Flamingo)</option>
+                    <option value="78988b">78988 – TNCC Curaçao (Hato)</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                </div>
+                <div class="enc-field wide" id="enc-custom-wrap" style="display:none">
+                  <div class="enc-lbl">Custom WMO Number</div>
+                  <input class="enc-inp" type="text" id="enc-custom" maxlength="5" pattern="\d{5}" placeholder="00000" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">UTC Day (YY)</div>
+                  <input class="enc-inp" type="number" id="enc-yy" min="1" max="31" placeholder="e.g. 26" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">UTC Hour (GG)</div>
+                  <input class="enc-inp" type="number" id="enc-gg" min="0" max="23" placeholder="e.g. 00" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Wind Units (iw)</div>
+                  <select class="enc-inp" id="enc-iw" onchange="encUpdate()">
+                    <option value="3" selected>3 – kn (anemometer)</option>
+                    <option value="4">4 – kn (estimated)</option>
+                    <option value="0">0 – m/s (anemometer)</option>
+                    <option value="1">1 – m/s (estimated)</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Station Type (iX)</div>
+                  <select class="enc-inp" id="enc-ix" onchange="encUpdate()">
+                    <option value="1" selected>1 – Staffed, ww incl.</option>
+                    <option value="2">2 – Staffed, ww omit (sky)</option>
+                    <option value="3">3 – Staffed, ww omit (n.s.)</option>
+                    <option value="4">4 – Auto, ww incl.</option>
+                    <option value="5">5 – Auto, ww omit</option>
+                    <option value="7">7 – Unmanned auto</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Precip Indicator (iR)</div>
+                  <select class="enc-inp" id="enc-ir" onchange="encUpdate()">
+                    <option value="0">0 – In Sec 1 &amp; 3</option>
+                    <option value="1" selected>1 – In Sec 1 only</option>
+                    <option value="2">2 – In Sec 3 only</option>
+                    <option value="3">3 – No precipitation</option>
+                    <option value="4">4 – Not staffed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wind & Visibility -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Wind &amp; Visibility</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">Direction dd (°)</div>
+                  <input class="enc-inp" type="number" id="enc-dd" min="0" max="360" step="10" placeholder="e.g. 100" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Speed ff</div>
+                  <input class="enc-inp" type="number" id="enc-ff" min="0" max="250" placeholder="e.g. 14" oninput="encUpdate()">
+                </div>
+                <div class="enc-field wide">
+                  <div class="enc-lbl">Visibility (km)</div>
+                  <input class="enc-inp" type="number" id="enc-vis" min="0" max="150" step="0.1" placeholder="e.g. 12.0" oninput="encUpdate()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Cloud -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Cloud</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">Total Cover N</div>
+                  <select class="enc-inp" id="enc-n" onchange="encUpdate()">
+                    <option value="0">0 – SKC</option>
+                    <option value="1">1 – 1 okta (FEW)</option>
+                    <option value="2" selected>2 – 2 oktas (FEW)</option>
+                    <option value="3">3 – 3 oktas (SCT)</option>
+                    <option value="4">4 – 4 oktas (SCT)</option>
+                    <option value="5">5 – 5 oktas (BKN)</option>
+                    <option value="6">6 – 6 oktas (BKN)</option>
+                    <option value="7">7 – 7 oktas (BKN)</option>
+                    <option value="8">8 – OVC</option>
+                    <option value="9">9 – Obscured</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Base Height h</div>
+                  <select class="enc-inp" id="enc-h" onchange="encUpdate()">
+                    <option value="0">0 – 0–50 m</option>
+                    <option value="1">1 – 50–100 m</option>
+                    <option value="2">2 – 100–200 m</option>
+                    <option value="3">3 – 200–300 m</option>
+                    <option value="4">4 – 300–600 m</option>
+                    <option value="5" selected>5 – 600–1000 m (~2000 ft)</option>
+                    <option value="6">6 – 1000–1500 m</option>
+                    <option value="7">7 – 1500–2000 m</option>
+                    <option value="8">8 – 2000–2500 m</option>
+                    <option value="9">9 – ≥2500 m</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Nh – Low cloud amt</div>
+                  <select class="enc-inp" id="enc-nh" onchange="encUpdate()">
+                    <option value="0">0 – None</option>
+                    <option value="1" selected>1 – 1 okta</option>
+                    <option value="2">2 – 2 oktas</option>
+                    <option value="3">3 – 3 oktas</option>
+                    <option value="4">4 – 4 oktas</option>
+                    <option value="5">5 – 5 oktas</option>
+                    <option value="6">6 – 6 oktas</option>
+                    <option value="7">7 – 7–8 oktas</option>
+                    <option value="8">8 – Sky obs not made</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">CL – Low cloud</div>
+                  <select class="enc-inp" id="enc-cl" onchange="encUpdate()">
+                    <option value="0">0 – None</option>
+                    <option value="1" selected>1 – Cu humilis/fractus</option>
+                    <option value="2">2 – Cu med/congestus</option>
+                    <option value="3">3 – Cb calvus</option>
+                    <option value="4">4 – Sc (from Cu)</option>
+                    <option value="5">5 – Sc (not from Cu)</option>
+                    <option value="6">6 – St / St fractus</option>
+                    <option value="7">7 – Fractus (bad wx)</option>
+                    <option value="8">8 – Cu+Sc diff levels</option>
+                    <option value="9">9 – Cb capillatus</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">CM – Medium cloud</div>
+                  <select class="enc-inp" id="enc-cm" onchange="encUpdate()">
+                    <option value="0" selected>0 – None</option>
+                    <option value="1">1 – As translucidus</option>
+                    <option value="2">2 – As opacus / Ns</option>
+                    <option value="3">3 – Ac translucidus</option>
+                    <option value="4">4 – Ac patches</option>
+                    <option value="5">5 – Ac in bands</option>
+                    <option value="6">6 – Ac (from Cu/Cb)</option>
+                    <option value="7">7 – Ac double layer</option>
+                    <option value="8">8 – Ac castellanus</option>
+                    <option value="9">9 – Ac chaotic</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">CH – High cloud</div>
+                  <select class="enc-inp" id="enc-ch" onchange="encUpdate()">
+                    <option value="0" selected>0 – None</option>
+                    <option value="1">1 – Ci fibratus</option>
+                    <option value="2">2 – Ci spissatus</option>
+                    <option value="3">3 – Ci (from Cb)</option>
+                    <option value="4">4 – Ci increasing</option>
+                    <option value="5">5 – Ci+Cs &lt;45°</option>
+                    <option value="6">6 – Ci+Cs &gt;45°</option>
+                    <option value="7">7 – Cs whole sky</option>
+                    <option value="8">8 – Cs partial</option>
+                    <option value="9">9 – Cc</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Temperature -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Temperature &amp; Humidity</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">Temperature (°C)</div>
+                  <input class="enc-inp" type="number" id="enc-t" step="0.1" placeholder="e.g. 31.6" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Dew Point (°C)</div>
+                  <input class="enc-inp" type="number" id="enc-td" step="0.1" placeholder="e.g. 26.7" oninput="encUpdate()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Pressure -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Pressure</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">Stn Pressure QFE (hPa)</div>
+                  <input class="enc-inp" type="number" id="enc-pstn" step="0.1" placeholder="e.g. 1001.8" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">MSL Pressure QNH (hPa)</div>
+                  <input class="enc-inp" type="number" id="enc-pmsl" step="0.1" placeholder="e.g. 1014.8" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Tendency a</div>
+                  <select class="enc-inp" id="enc-a" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="0">0 – Rising then falling</option>
+                    <option value="1">1 – Rising then steady</option>
+                    <option value="2">2 – Rising steadily</option>
+                    <option value="3">3 – Falling then rising</option>
+                    <option value="4">4 – Steady</option>
+                    <option value="5">5 – Falling (lower than)</option>
+                    <option value="6">6 – Falling then steady</option>
+                    <option value="7">7 – Falling steadily</option>
+                    <option value="8">8 – Steady/rising then falling</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Pres change ppp (hPa)</div>
+                  <input class="enc-inp" type="number" id="enc-ppp" step="0.1" placeholder="e.g. 1.8" oninput="encUpdate()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Weather -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Present &amp; Past Weather</div>
+              <div class="enc-grid">
+                <div class="enc-field wide">
+                  <div class="enc-lbl">Present Weather ww</div>
+                  <select class="enc-inp" id="enc-ww" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <optgroup label="00–09  No sig phenomena">
+                      <option value="00">00 – No sig cloud</option>
+                      <option value="01">01 – Clouds dissolving</option>
+                      <option value="02">02 – Sky unchanged</option>
+                      <option value="03">03 – Clouds developing</option>
+                      <option value="04">04 – Smoke haze</option>
+                      <option value="05">05 – Haze</option>
+                      <option value="06">06 – Dust in suspension</option>
+                      <option value="07">07 – Dust/wind raised</option>
+                      <option value="08">08 – Dust/sand whirl</option>
+                      <option value="09">09 – Duststorm in sight</option>
+                    </optgroup>
+                    <optgroup label="10–19  Mist / Fog / Special">
+                      <option value="10">10 – Mist</option>
+                      <option value="11">11 – Shallow fog patches</option>
+                      <option value="12">12 – Shallow fog cont.</option>
+                      <option value="13">13 – Lightning, no thunder</option>
+                      <option value="14">14 – Precip not reaching ground</option>
+                      <option value="15">15 – Distant precip</option>
+                      <option value="16">16 – Precip near, not at stn</option>
+                      <option value="17">17 – Thunderstorm, no precip</option>
+                      <option value="18">18 – Squalls</option>
+                      <option value="19">19 – Funnel cloud</option>
+                    </optgroup>
+                    <optgroup label="20–29  Past phenomena (past hour)">
+                      <option value="20">20 – Drizzle/snow (past hr)</option>
+                      <option value="21">21 – Rain (past hr)</option>
+                      <option value="22">22 – Snow (past hr)</option>
+                      <option value="23">23 – Rain &amp; snow (past hr)</option>
+                      <option value="24">24 – Freezing precip (past hr)</option>
+                      <option value="25">25 – Rain showers (past hr)</option>
+                      <option value="26">26 – Snow showers (past hr)</option>
+                      <option value="27">27 – Hail showers (past hr)</option>
+                      <option value="28">28 – Fog (past hr)</option>
+                      <option value="29">29 – Thunderstorm (past hr)</option>
+                    </optgroup>
+                    <optgroup label="30–39  Dust / Sand / Snow">
+                      <option value="30">30 – Slight duststorm (decr.)</option>
+                      <option value="31">31 – Slight duststorm (=)</option>
+                      <option value="32">32 – Slight duststorm (incr.)</option>
+                      <option value="33">33 – Severe duststorm (decr.)</option>
+                      <option value="34">34 – Severe duststorm (=)</option>
+                      <option value="35">35 – Severe duststorm (incr.)</option>
+                      <option value="36">36 – Slight drifting snow</option>
+                      <option value="37">37 – Heavy drifting snow</option>
+                      <option value="38">38 – Slight blowing snow</option>
+                      <option value="39">39 – Heavy blowing snow</option>
+                    </optgroup>
+                    <optgroup label="40–49  Fog">
+                      <option value="40">40 – Fog at distance</option>
+                      <option value="41">41 – Fog patches</option>
+                      <option value="42">42 – Fog thinning, sky vis</option>
+                      <option value="43">43 – Fog thinning, sky obs</option>
+                      <option value="44">44 – Fog, sky vis, no change</option>
+                      <option value="45">45 – Fog, sky obs, no change</option>
+                      <option value="46">46 – Fog thickening, sky vis</option>
+                      <option value="47">47 – Fog thickening, sky obs</option>
+                      <option value="48">48 – Fog + rime, sky vis</option>
+                      <option value="49">49 – Fog + rime, sky obs</option>
+                    </optgroup>
+                    <optgroup label="50–59  Drizzle">
+                      <option value="50">50 – Drizzle slight intermit</option>
+                      <option value="51">51 – Drizzle slight cont.</option>
+                      <option value="52">52 – Drizzle mod intermit</option>
+                      <option value="53">53 – Drizzle mod cont.</option>
+                      <option value="54">54 – Drizzle heavy intermit</option>
+                      <option value="55">55 – Drizzle heavy cont.</option>
+                      <option value="56">56 – Freezing drizzle slight</option>
+                      <option value="57">57 – Freezing drizzle mod/heavy</option>
+                      <option value="58">58 – Drizzle + rain slight</option>
+                      <option value="59">59 – Drizzle + rain mod/heavy</option>
+                    </optgroup>
+                    <optgroup label="60–69  Rain">
+                      <option value="60">60 – Rain slight intermit</option>
+                      <option value="61">61 – Rain slight cont.</option>
+                      <option value="62">62 – Rain mod intermit</option>
+                      <option value="63">63 – Rain mod cont.</option>
+                      <option value="64">64 – Rain heavy intermit</option>
+                      <option value="65">65 – Rain heavy cont.</option>
+                      <option value="66">66 – Freezing rain slight</option>
+                      <option value="67">67 – Freezing rain mod/heavy</option>
+                      <option value="68">68 – Rain + snow slight</option>
+                      <option value="69">69 – Rain + snow mod/heavy</option>
+                    </optgroup>
+                    <optgroup label="70–79  Snow / Ice">
+                      <option value="70">70 – Snow slight intermit</option>
+                      <option value="71">71 – Snow slight cont.</option>
+                      <option value="72">72 – Snow mod intermit</option>
+                      <option value="73">73 – Snow mod cont.</option>
+                      <option value="74">74 – Snow heavy intermit</option>
+                      <option value="75">75 – Snow heavy cont.</option>
+                      <option value="76">76 – Diamond dust</option>
+                      <option value="77">77 – Snow grains</option>
+                      <option value="78">78 – Ice crystals</option>
+                      <option value="79">79 – Ice pellets</option>
+                    </optgroup>
+                    <optgroup label="80–89  Showers">
+                      <option value="80">80 – Rain shower slight</option>
+                      <option value="81">81 – Rain shower mod/heavy</option>
+                      <option value="82">82 – Rain shower violent</option>
+                      <option value="83">83 – Rain+snow shower slight</option>
+                      <option value="84">84 – Rain+snow shower mod/heavy</option>
+                      <option value="85">85 – Snow shower slight</option>
+                      <option value="86">86 – Snow shower mod/heavy</option>
+                      <option value="87">87 – Snow/ice shower slight</option>
+                      <option value="88">88 – Snow/ice shower mod/heavy</option>
+                      <option value="89">89 – Hail shower slight</option>
+                    </optgroup>
+                    <optgroup label="90–99  Thunderstorms">
+                      <option value="90">90 – Hail shower mod/heavy</option>
+                      <option value="91">91 – TS slight, rain</option>
+                      <option value="92">92 – TS mod/heavy, rain</option>
+                      <option value="93">93 – TS slight, snow/hail</option>
+                      <option value="94">94 – TS mod/heavy, snow/hail</option>
+                      <option value="95">95 – TS slight/mod, rain/snow</option>
+                      <option value="96">96 – TS slight/mod, hail</option>
+                      <option value="97">97 – TS heavy, rain/snow</option>
+                      <option value="98">98 – TS + duststorm</option>
+                      <option value="99">99 – TS heavy, hail</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Past Weather W1</div>
+                  <select class="enc-inp" id="enc-w1" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="0">0 – Cloud ≤½</option>
+                    <option value="1">1 – Cloud &gt;½ part</option>
+                    <option value="2">2 – Cloud &gt;½ all</option>
+                    <option value="3">3 – Sandstorm/snow</option>
+                    <option value="4">4 – Fog/thick haze</option>
+                    <option value="5">5 – Drizzle</option>
+                    <option value="6">6 – Rain</option>
+                    <option value="7">7 – Snow/rain+snow</option>
+                    <option value="8">8 – Showers</option>
+                    <option value="9">9 – Thunderstorm</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Past Weather W2</div>
+                  <select class="enc-inp" id="enc-w2" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="0">0 – Cloud ≤½</option>
+                    <option value="1">1 – Cloud &gt;½ part</option>
+                    <option value="2">2 – Cloud &gt;½ all</option>
+                    <option value="3">3 – Sandstorm/snow</option>
+                    <option value="4">4 – Fog/thick haze</option>
+                    <option value="5">5 – Drizzle</option>
+                    <option value="6">6 – Rain</option>
+                    <option value="7">7 – Snow/rain+snow</option>
+                    <option value="8">8 – Showers</option>
+                    <option value="9">9 – Thunderstorm</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Precipitation -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Precipitation (Section 1)</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">Amount RRR (mm)</div>
+                  <input class="enc-inp" type="number" id="enc-rrr" min="0" step="0.1" placeholder="e.g. 0.0" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Period tR</div>
+                  <select class="enc-inp" id="enc-tr" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="1">1 – 6 h</option>
+                    <option value="2">2 – 12 h</option>
+                    <option value="3">3 – 18 h</option>
+                    <option value="4">4 – 24 h</option>
+                    <option value="5">5 – 1 h</option>
+                    <option value="6">6 – 2 h</option>
+                    <option value="7">7 – 3 h</option>
+                    <option value="8">8 – 9 h</option>
+                    <option value="9">9 – 15 h</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3 Extremes -->
+            <div class="enc-sec">
+              <div class="enc-sec-hdr">Section 3 – Temperature Extremes</div>
+              <div class="enc-grid">
+                <div class="enc-field">
+                  <div class="enc-lbl">T Max (°C)</div>
+                  <input class="enc-inp" type="number" id="enc-tmax" step="0.1" placeholder="e.g. 31.6" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">T Min (°C)</div>
+                  <input class="enc-inp" type="number" id="enc-tmin" step="0.1" placeholder="e.g. 26.7" oninput="encUpdate()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Output -->
+            <div class="enc-out-wrap">
+              <div class="enc-out-bar">
+                <span class="enc-out-lbl">Generated SYNOP</span>
+                <button class="enc-copy-btn" onclick="encCopy()">Copy</button>
+              </div>
+              <div class="enc-out" id="enc-out">Fill in the fields above to generate a SYNOP message.</div>
+              <div class="enc-bdwn" id="enc-bdwn"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- FM-12 Coding Reference -->
@@ -1435,6 +1906,210 @@ async function loadAllTafs(){
   const e=$('taf-updated');if(e)e.textContent=nowStamp();
 }
 
+/* ── SYNOP ENCODER ── */
+function encStnChange(){
+  const v=document.getElementById('enc-stn').value;
+  const wrap=document.getElementById('enc-custom-wrap');
+  if(v==='custom'){wrap.style.display='';} else {wrap.style.display='none';}
+  encUpdate();
+}
+function encGetIIIII(){
+  const v=document.getElementById('enc-stn').value;
+  if(v==='custom') return (document.getElementById('enc-custom').value||'00000').padStart(5,'0');
+  return v.replace('b',''); // strip 'b' suffix used to distinguish TNCC
+}
+function encVV(km){
+  const k=parseFloat(km);
+  if(isNaN(k)||k<0) return '//';
+  const m=k*1000;
+  if(m<100) return '00';
+  if(m<=5000) return String(Math.min(50,Math.round(m/100))).padStart(2,'0');
+  if(k<=25) return String(Math.min(70,Math.round(k+45))).padStart(2,'0');
+  if(k<=70) return String(Math.min(79,Math.round((k-30)/5)+71)).padStart(2,'0');
+  if(k<=100) return String(Math.min(85,Math.round((k-75)/5)+80)).padStart(2,'0');
+  if(k<=130) return String(Math.min(88,Math.round((k-110)/10)+86)).padStart(2,'0');
+  return '89';
+}
+function encT(val){
+  const v=parseFloat(val);
+  if(isNaN(v)) return null;
+  const sn=v<0?'1':'0';
+  return sn+String(Math.round(Math.abs(v)*10)).padStart(3,'0');
+}
+function encP(val){
+  const v=parseFloat(val);
+  if(isNaN(v)) return null;
+  return String(Math.round(v*10)%10000).padStart(4,'0');
+}
+function encRRR(val){
+  const v=parseFloat(val);
+  if(isNaN(v)) return null;
+  if(v===0) return '000';
+  if(v<0.05) return '990'; // trace
+  if(v<1) return String(Math.round(v*10)+990).padStart(3,'0'); // 991-999
+  if(v>=989) return '989';
+  return String(Math.round(v)).padStart(3,'0');
+}
+function encUpdate(){
+  const p=n=>document.getElementById(n);
+  const v=n=>p(n)?p(n).value:'';
+
+  const yy=String(parseInt(v('enc-yy'))||0).padStart(2,'0');
+  const gg=String(parseInt(v('enc-gg'))||0).padStart(2,'0');
+  const iw=v('enc-iw')||'3';
+  const ix=v('enc-ix')||'1';
+  const ir=v('enc-ir')||'1';
+  const h=v('enc-h')||'5';
+  const N=v('enc-n')||'0';
+  const iiiii=encGetIIIII();
+
+  const vvCode=encVV(v('enc-vis'));
+
+  const ddRaw=v('enc-dd');
+  const ffRaw=v('enc-ff');
+  const ffInt=parseInt(ffRaw);
+  let dd='//';
+  let ff='//';
+  let needExt=false;
+  if(ddRaw!==''){
+    const deg=parseInt(ddRaw);
+    if(ffInt===0){dd='00';ff='00';}
+    else if(deg===0||deg===360){dd='36';}
+    else{dd=String(Math.round(deg/10)).padStart(2,'0');}
+  }
+  if(ffRaw!==''){
+    ff=ffInt>=99?'99':String(ffInt).padStart(2,'0');
+    needExt=ffInt>=99;
+  }
+
+  const tEnc=encT(v('enc-t'));
+  const tdEnc=encT(v('enc-td'));
+  const pstnEnc=encP(v('enc-pstn'));
+  const pmslEnc=encP(v('enc-pmsl'));
+
+  const aVal=v('enc-a');
+  const pppRaw=v('enc-ppp');
+  const rrrRaw=v('enc-rrr');
+  const trVal=v('enc-tr');
+  const wwVal=v('enc-ww');
+  const w1Val=v('enc-w1');
+  const w2Val=v('enc-w2');
+  const nhVal=v('enc-nh');
+  const clVal=v('enc-cl');
+  const cmVal=v('enc-cm');
+  const chVal=v('enc-ch');
+  const tmaxRaw=v('enc-tmax');
+  const tminRaw=v('enc-tmin');
+
+  const groups=[];
+  const bdwn=[];
+
+  // AAXX header
+  const aaxxLine=`AAXX ${yy}${gg}${iw}`;
+  bdwn.push([aaxxLine, `SYNOP header · Day ${yy} · ${gg}:00Z · wind in ${iw==='3'||iw==='4'?'kn':'m/s'}`]);
+
+  // Station
+  groups.push(iiiii);
+  bdwn.push([iiiii, `WMO station number`]);
+
+  // Group 1: iRiXhVV
+  const g1=ir+ix+h+vvCode;
+  groups.push(g1);
+  bdwn.push([g1, `iR=${ir} iX=${ix} h=${h} VV=${vvCode} → vis ${v('enc-vis')||'?'} km`]);
+
+  // Group 2: Nddff
+  let g2=N+dd+ff;
+  groups.push(g2);
+  const wuLabel=iw==='3'||iw==='4'?'kn':'m/s';
+  bdwn.push([g2, `N=${N} dd=${dd} ff=${ff} → cover ${N}/8, dir ${dd==='00'?'calm':dd+'0°'}, ${ffInt||0} ${wuLabel}`]);
+  if(needExt){
+    const ext='00'+String(ffInt).padStart(3,'0');
+    groups.push(ext);
+    bdwn.push([ext, `Wind extension: ${ffInt} ${wuLabel}`]);
+  }
+
+  // Temperature
+  if(tEnc){const g='1'+tEnc;groups.push(g);bdwn.push([g,`Temperature: ${v('enc-t')}°C`]);}
+  // Dew point
+  if(tdEnc){const g='2'+tdEnc;groups.push(g);bdwn.push([g,`Dew point: ${v('enc-td')}°C`]);}
+  // Station pressure
+  if(pstnEnc){const g='3'+pstnEnc;groups.push(g);bdwn.push([g,`Station pressure: ${v('enc-pstn')} hPa`]);}
+  // MSL pressure
+  if(pmslEnc){const g='4'+pmslEnc;groups.push(g);bdwn.push([g,`MSL pressure (QNH): ${v('enc-pmsl')} hPa`]);}
+  // Tendency
+  if(aVal!==''&&pppRaw!==''){
+    const pppVal=Math.abs(parseFloat(pppRaw));
+    const ppp=String(Math.round(pppVal*10)).padStart(3,'0');
+    const g='5'+aVal+ppp;
+    groups.push(g);
+    bdwn.push([g,`Pres tendency: char ${aVal}, change ${parseFloat(pppRaw)>=0?'+':''}${pppRaw} hPa/3h`]);
+  }
+  // Precipitation (Sec 1)
+  if(ir!=='3'&&ir!=='4'&&rrrRaw!==''&&trVal!==''){
+    const rrrCode=encRRR(rrrRaw);
+    if(rrrCode){
+      const g='6'+rrrCode+trVal;
+      groups.push(g);
+      const pDesc=['','6h','12h','18h','24h','1h','2h','3h','9h','15h'][parseInt(trVal)]||trVal+'h';
+      bdwn.push([g,`Precipitation: ${rrrRaw} mm / ${pDesc}`]);
+    }
+  }
+  // Present weather
+  const inclWW=ix==='1'||ix==='4';
+  if(inclWW&&wwVal!==''&&w1Val!==''&&w2Val!==''){
+    const g='7'+wwVal.padStart(2,'0')+w1Val+w2Val;
+    groups.push(g);
+    bdwn.push([g,`ww=${wwVal} W1=${w1Val} W2=${w2Val}`]);
+  }
+  // Cloud types
+  if(nhVal!==''&&clVal!==''&&cmVal!==''&&chVal!==''){
+    const g='8'+nhVal+clVal+cmVal+chVal;
+    groups.push(g);
+    bdwn.push([g,`Nh=${nhVal} CL=${clVal} CM=${cmVal} CH=${chVal}`]);
+  }
+
+  // Section 3
+  const sec3=[];
+  const s3bdwn=[];
+  const tmaxEnc=encT(tmaxRaw);
+  const tminEnc=encT(tminRaw);
+  if(tmaxEnc){const g='1'+tmaxEnc;sec3.push(g);s3bdwn.push([g,`T max: ${tmaxRaw}°C`]);}
+  if(tminEnc){const g='2'+tminEnc;sec3.push(g);s3bdwn.push([g,`T min: ${tminRaw}°C`]);}
+
+  let body=groups.join(' ');
+  if(sec3.length){body+=' 333 '+sec3.join(' ');bdwn.push(['333','Section 3 separator']);s3bdwn.forEach(r=>bdwn.push(r));}
+  body+='=';
+
+  const full=aaxxLine+'\n'+body;
+  const outEl=document.getElementById('enc-out');
+  const bdwnEl=document.getElementById('enc-bdwn');
+  if(outEl) outEl.textContent=full;
+  if(bdwnEl){
+    bdwnEl.innerHTML=bdwn.map(([code,desc])=>`<div class="enc-row"><span class="enc-row-code">${escHtml(code)}</span><span class="enc-row-desc">${escHtml(desc)}</span></div>`).join('');
+  }
+}
+function encCopy(){
+  const el=document.getElementById('enc-out');
+  if(!el||el.textContent.startsWith('Fill')) return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    const btn=document.querySelector('#synop-sub-encode .enc-copy-btn');
+    if(btn){const t=btn.textContent;btn.textContent='Copied!';setTimeout(()=>btn.textContent=t,1500);}
+  }).catch(()=>{});
+}
+// Auto-fill current UTC time when encoder tab opens
+function encInitTime(){
+  const d=new Date();
+  const yyEl=document.getElementById('enc-yy');
+  const ggEl=document.getElementById('enc-gg');
+  if(yyEl&&!yyEl.value) yyEl.value=d.getUTCDate();
+  if(ggEl&&!ggEl.value) ggEl.value=d.getUTCHours();
+  encUpdate();
+}
+window.encUpdate=encUpdate;
+window.encStnChange=encStnChange;
+window.encCopy=encCopy;
+window.encInitTime=encInitTime;
+
 /* ── SYNOP WMO FM-12 ── */
 const T_WW={'00':'No significant cloud','01':'Clouds dissolving','02':'Sky unchanged','03':'Clouds developing','04':'Smoke haze','05':'Haze','06':'Dust in suspension','07':'Dust raised by wind','08':'Dust/sand whirl','09':'Duststorm in sight','10':'Mist','11':'Shallow fog patches','12':'Continuous shallow fog','13':'Lightning, no thunder','14':'Precip not reaching ground','15':'Distant precip','16':'Precip near, not at station','17':'Thunderstorm, no precip','18':'Squalls','19':'Funnel cloud','20':'Drizzle/snow (past hr)','21':'Rain (past hr)','22':'Snow (past hr)','23':'Rain & snow (past hr)','24':'Freezing precip (past hr)','25':'Rain showers (past hr)','26':'Snow showers (past hr)','27':'Hail showers (past hr)','28':'Fog (past hr)','29':'Thunderstorm (past hr)','30':'Slight duststorm↓','31':'Slight duststorm=','32':'Slight duststorm↑','33':'Severe duststorm↓','34':'Severe duststorm=','35':'Severe duststorm↑','36':'Slight drifting snow','37':'Heavy drifting snow','38':'Slight blowing snow','39':'Heavy blowing snow','40':'Fog at distance','41':'Fog patches','42':'Fog thinning, sky vis','43':'Fog thinning, sky obs','44':'Fog, sky vis, no change','45':'Fog, sky obs, no change','46':'Fog thickening, sky vis','47':'Fog thickening, sky obs','48':'Fog + rime, sky vis','49':'Fog + rime, sky obs','50':'Drizzle slight intermit','51':'Drizzle slight cont','52':'Drizzle mod intermit','53':'Drizzle mod cont','54':'Drizzle heavy intermit','55':'Drizzle heavy cont','56':'Freezing drizzle slight','57':'Freezing drizzle mod/heavy','58':'Drizzle + rain slight','59':'Drizzle + rain mod/heavy','60':'Rain slight intermit','61':'Rain slight cont','62':'Rain mod intermit','63':'Rain mod cont','64':'Rain heavy intermit','65':'Rain heavy cont','66':'Freezing rain slight','67':'Freezing rain mod/heavy','68':'Rain + snow slight','69':'Rain + snow mod/heavy','70':'Snow slight intermit','71':'Snow slight cont','72':'Snow mod intermit','73':'Snow mod cont','74':'Snow heavy intermit','75':'Snow heavy cont','76':'Diamond dust','77':'Snow grains','78':'Ice crystals','79':'Ice pellets','80':'Rain shower slight','81':'Rain shower mod/heavy','82':'Rain shower violent','83':'Rain+snow shower slight','84':'Rain+snow shower mod/heavy','85':'Snow shower slight','86':'Snow shower mod/heavy','87':'Snow/ice pellet shower slight','88':'Snow/ice pellet shower mod/heavy','89':'Hail shower slight','90':'Hail shower mod/heavy','91':'TS slight rain','92':'TS mod/heavy rain','93':'TS slight snow/hail','94':'TS mod/heavy snow/hail','95':'TS slight/mod rain/snow','96':'TS slight/mod hail','97':'TS heavy rain/snow','98':'TS + duststorm','99':'TS heavy hail'};
 const T_W={'0':'Cloud ≤½','1':'Cloud >½ part','2':'Cloud >½ all','3':'Sandstorm/blowing snow','4':'Fog/thick haze','5':'Drizzle','6':'Rain','7':'Snow/rain+snow','8':'Showers','9':'Thunderstorm'};
@@ -1849,6 +2524,7 @@ function switchSubTab(panel,name){
   const bar=document.getElementById(panel+'-sub-bar');
   if(bar)bar.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===name));
   document.querySelectorAll('[id^="'+panel+'-sub-"]').forEach(p=>p.classList.toggle('active',p.id===panel+'-sub-'+name));
+  if(panel==='synop'&&name==='encode') encInitTime();
 }
 window.switchSubTab=switchSubTab;
 const loadedTabs={metar:true,taf:false,synop:false,stations:false,atc:true,weather:false};
