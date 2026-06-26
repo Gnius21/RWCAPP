@@ -492,11 +492,109 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
         <div class="s-title">TAF</div>
         <button class="s-btn" id="taf-refresh-btn">↻ TAF</button>
       </div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>ICAO</th><th>Valid</th><th>Wind</th><th>Vis</th><th>Wx</th><th>Cld</th></tr></thead>
-        <tbody id="taf"></tbody></table>
+      <div class="sub-tab-bar" id="taf-sub-bar">
+        <button class="sub-tab-btn active" data-sub="live" onclick="switchSubTab('taf','live')">Live</button>
+        <button class="sub-tab-btn" data-sub="amd" onclick="switchSubTab('taf','amd')">AMD Criteria</button>
+        <button class="sub-tab-btn" data-sub="guide" onclick="switchSubTab('taf','guide')">Guide</button>
       </div>
-      <div class="status-bar"><span id="taf-updated">—</span></div>
+
+      <!-- Live TAF -->
+      <div class="sub-panel active" id="taf-sub-live">
+        <div class="tbl-wrap">
+          <table><thead><tr><th>ICAO</th><th>Valid</th><th>Wind</th><th>Vis</th><th>Wx</th><th>Cld</th></tr></thead>
+          <tbody id="taf"></tbody></table>
+        </div>
+        <div class="status-bar"><span id="taf-updated">—</span></div>
+      </div>
+
+      <!-- AMD Criteria -->
+      <div class="sub-panel" id="taf-sub-amd">
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Wind — Amendment Required</div>
+          <div class="speci-item">Mean direction changes ≥ <strong>60°</strong> when mean speed before or after change is ≥ 10 kt</div>
+          <div class="speci-item">Mean speed (or gust) changes ≥ <strong>10 kt</strong></div>
+        </div>
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Visibility — Threshold Crossing</div>
+          <div class="speci-item">Crosses <strong>800 m</strong></div>
+          <div class="speci-item">Crosses <strong>1 500 m</strong></div>
+          <div class="speci-item">Crosses <strong>3 000 m</strong></div>
+          <div class="speci-item">Crosses <strong>5 000 m</strong> (where ops require vis 1 500–3 500 m)</div>
+        </div>
+        <div class="speci-trigger lvl-crit">
+          <div class="speci-trigger-head">Weather Phenomena — Onset or Cessation</div>
+          <div class="speci-item">Thunderstorm <span class="ref-badge rb-crit">TS</span><span class="ref-badge rb-crit">TSRA</span><span class="ref-badge rb-crit">TSGR</span><span class="ref-badge rb-crit">VCTS</span></div>
+          <div class="speci-item">Freezing precipitation <span class="ref-badge rb-crit">FZRA</span><span class="ref-badge rb-crit">FZDZ</span><span class="ref-badge rb-crit">FZFG</span></div>
+          <div class="speci-item">Moderate or heavy precipitation <span class="ref-badge rb-crit">+RA</span><span class="ref-badge rb-crit">+SN</span><span class="ref-badge rb-crit">+SHRA</span></div>
+          <div class="speci-item">Fog <span class="ref-badge rb-crit">FG</span> — visibility &lt; 1 000 m</div>
+          <div class="speci-item">Squall <span class="ref-badge rb-warn">SQ</span> · Duststorm <span class="ref-badge rb-warn">DS</span> · Sandstorm <span class="ref-badge rb-warn">SS</span></div>
+          <div class="speci-item">Blowing snow <span class="ref-badge rb-warn">BLSN</span> · Volcanic ash <span class="ref-badge rb-warn">VA</span> · Funnel cloud <span class="ref-badge rb-warn">FC</span></div>
+        </div>
+        <div class="speci-trigger">
+          <div class="speci-trigger-head">Cloud — Ceiling Threshold Crossing</div>
+          <div class="speci-item">Lowest BKN or OVC base crosses <strong>100 ft</strong> (30 m)</div>
+          <div class="speci-item">Lowest BKN or OVC base crosses <strong>200 ft</strong> (60 m)</div>
+          <div class="speci-item">Lowest BKN or OVC base crosses <strong>500 ft</strong> (150 m)</div>
+          <div class="speci-item">Lowest BKN or OVC base crosses <strong>1 000 ft</strong> (300 m)</div>
+          <div class="speci-item">Lowest BKN or OVC base crosses <strong>1 500 ft</strong> (450 m)</div>
+          <div class="speci-item">Cloud amount category changes: BKN/OVC ↔ SCT/FEW/SKC</div>
+        </div>
+        <div class="ref-section" style="margin-top:10px;">
+          <div class="ref-head">TAF AMD vs COR — Quick Rule</div>
+          <div class="ref-row"><span class="ref-key">TAF</span><span class="ref-val">Routine forecast — issued 1–2 h before validity start. Valid 24 h or 30 h</span></div>
+          <div class="ref-row"><span class="ref-key">TAF AMD</span><span class="ref-val">Amendment — issued immediately when conditions differ from forecast by crossing a criterion above <em>and are expected to persist</em>. Replaces the running TAF from that time onward</span></div>
+          <div class="ref-row"><span class="ref-key">TAF COR</span><span class="ref-val">Correction — issued to fix an error in an already-issued TAF (typo, wrong value). The original time is retained</span></div>
+          <div class="ref-row"><span class="ref-key">NIL</span><span class="ref-val">TAF NIL — confirms no TAF will be issued for the period</span></div>
+        </div>
+      </div>
+
+      <!-- Guide -->
+      <div class="sub-panel" id="taf-sub-guide">
+        <div class="ref-section">
+          <div class="ref-head">TAF Element Order (ICAO Annex 3 §5.1)</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--acc);padding:9px 13px;background:rgba(0,0,0,0.35);border-bottom:1px solid var(--border);word-break:break-all;line-height:1.8;letter-spacing:.3px;">
+            TAF TNCC 261700Z 2618/2724 12018KT 9999 FEW020 TEMPO 2618/2624 3000 SHRA BKN015CB=
+          </div>
+          <div class="ref-row"><span class="ref-key">Type</span><span class="ref-val">TAF · TAF AMD (amendment) · TAF COR (correction)</span></div>
+          <div class="ref-row"><span class="ref-key">ICAO ID</span><span class="ref-val">4-letter station code — TNCC, TNCA, TNCB</span></div>
+          <div class="ref-row"><span class="ref-key">Issue time</span><span class="ref-val">DDHHmmZ — day, hour, minute UTC of issue</span></div>
+          <div class="ref-row"><span class="ref-key">Valid period</span><span class="ref-val">DDHH/DDHH — from day/hour to day/hour UTC. e.g. 2618/2724 = day 26 18:00Z to day 27 24:00Z</span></div>
+          <div class="ref-row"><span class="ref-key">Wind</span><span class="ref-val">dddffKT or dddffGfmfmKT. VRB when direction varies and speed &lt; 3 kt. 00000KT for calm</span></div>
+          <div class="ref-row"><span class="ref-key">Visibility</span><span class="ref-val">4-digit metres. 9999 = ≥ 10 km. CAVOK when vis ≥ 10 km, no Cb, no sig wx, no cloud below 1 500 m</span></div>
+          <div class="ref-row"><span class="ref-key">Weather</span><span class="ref-val">Qualifier + descriptor + phenomenon (e.g. +TSRA, SHRA, BR, FG). NSW = No Significant Weather (cancels previous weather)</span></div>
+          <div class="ref-row"><span class="ref-key">Cloud</span><span class="ref-val">NsNsNshshshs in hundreds of feet. FEW/SCT/BKN/OVC + CB or TCU as needed. NSC = No Significant Cloud</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Change Groups</div>
+          <div class="ref-row"><span class="ref-key">FM</span><span class="ref-val"><strong>From</strong> — permanent change from an exact time (FMDDHHmm). Replaces all elements of the base forecast from that point. No end time</span></div>
+          <div class="ref-row"><span class="ref-key">BECMG</span><span class="ref-val"><strong>Becoming</strong> — gradual change expected to occur within the specified period (DDHH/DDHH). Change completes by the end time and persists</span></div>
+          <div class="ref-row"><span class="ref-key">TEMPO</span><span class="ref-val"><strong>Temporary</strong> — fluctuating conditions each lasting &lt; 60 min, totalling &lt; half the period. Reverts to base forecast between occurrences</span></div>
+          <div class="ref-row"><span class="ref-key">PROB30</span><span class="ref-val">30% probability of conditions during the period. Cannot precede TEMPO or appear in first 6 h</span></div>
+          <div class="ref-row"><span class="ref-key">PROB40</span><span class="ref-val">40% probability. Can be used with TEMPO: <strong>PROB40 TEMPO</strong></span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">CAVOK Conditions (all three must be met)</div>
+          <div class="ref-row"><span class="ref-key">1</span><span class="ref-val">Visibility ≥ 10 km (9999 or no restriction)</span></div>
+          <div class="ref-row"><span class="ref-key">2</span><span class="ref-val">No cloud below 1 500 m (5 000 ft) and no Cb at any level</span></div>
+          <div class="ref-row"><span class="ref-key">3</span><span class="ref-val">No significant weather (no precipitation, fog, dust, squall, etc.)</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Validity Periods &amp; Issue Times (ICAO Annex 3 §5.1.3)</div>
+          <div class="ref-row"><span class="ref-key">Standard</span><span class="ref-val">24 h validity; issue 1–2 h before start of validity</span></div>
+          <div class="ref-row"><span class="ref-key">Extended</span><span class="ref-val">30 h validity where operationally required</span></div>
+          <div class="ref-row"><span class="ref-key">AMD timing</span><span class="ref-val">Issued as soon as the forecaster determines the criterion is met and expected to persist — no delay</span></div>
+          <div class="ref-row"><span class="ref-key">Cancellation</span><span class="ref-val">TAF CNL DDHHmmZ DDHH/DDHH — cancels a TAF before its validity starts</span></div>
+        </div>
+        <div class="ref-section">
+          <div class="ref-head">Weather Descriptors &amp; Phenomena</div>
+          <div class="ref-row"><span class="ref-key">TS</span><span class="ref-val">Thunderstorm — always encode as TS + phenomenon (TSRA, TSGR) or TS alone if no precipitation</span></div>
+          <div class="ref-row"><span class="ref-key">SH</span><span class="ref-val">Shower — SHRA, SHSN, SHGR; implies Cb or deep Cu; intermittent by nature</span></div>
+          <div class="ref-row"><span class="ref-key">FZ</span><span class="ref-val">Freezing — FZRA, FZDZ, FZFG; always critical for aircraft icing</span></div>
+          <div class="ref-row"><span class="ref-key">BL / DR</span><span class="ref-val">Blowing / Low drifting: BLSN, BLDU, BLSA / DRBLSN. BLSN reduces vis; DR stays below 2 m</span></div>
+          <div class="ref-row"><span class="ref-key">MI/BC/PR</span><span class="ref-val">Shallow fog / Patches / Partial — MI FG &lt; 2 m deep; BC FG in patches; PR FG covers part of aerodrome</span></div>
+          <div class="ref-row"><span class="ref-key">NSW</span><span class="ref-val">No Significant Weather — cancels a previous weather group in BECMG or TEMPO when wx returns to nil</span></div>
+        </div>
+      </div>
     </div>
 
     <!-- SYNOP -->
