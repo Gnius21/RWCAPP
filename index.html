@@ -28,7 +28,7 @@
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;overflow:hidden;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
 a{color:var(--acc);text-decoration:none;}
-#app{display:flex;flex-direction:column;height:100dvh;height:100vh;}
+#app{display:flex;flex-direction:column;height:100%;height:100dvh;}
 
 /* HEADER */
 .hdr{height:var(--hdr);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;gap:8px;background:rgba(4,14,28,0.97);border-bottom:1px solid var(--border);position:relative;z-index:20;}
@@ -50,13 +50,13 @@ a{color:var(--acc);text-decoration:none;}
 .vis-dot.low{background:var(--alert);box-shadow:0 0 6px var(--alert);}
 
 /* SCROLL */
-.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
-.panel{display:none;padding:10px;padding-bottom:calc(var(--nav) + 14px);}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom));}
+.panel{display:none;padding:10px;padding-bottom:16px;}
 .panel.active{display:block;animation:panelIn .22s ease both;}
 @keyframes panelIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
 
-/* BOTTOM NAV */
-.nav{height:var(--nav);flex-shrink:0;display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-top:1px solid var(--border);position:relative;z-index:20;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+/* BOTTOM NAV — fixed so it always stays above iOS Safari toolbar */
+.nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-top:1px solid var(--border);z-index:100;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .nav::-webkit-scrollbar{display:none;}
 .nav-btn{flex:0 0 auto;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1px;font-weight:700;text-transform:uppercase;border-top:2px solid transparent;transition:color .15s,border-color .15s;padding:6px 4px;}
 .nav-btn .ic{font-size:17px;line-height:1;transition:transform .15s;}
