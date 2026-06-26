@@ -56,8 +56,9 @@ a{color:var(--acc);text-decoration:none;}
 @keyframes panelIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
 
 /* BOTTOM NAV */
-.nav{height:var(--nav);flex-shrink:0;display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-top:1px solid var(--border);position:relative;z-index:20;padding-bottom:env(safe-area-inset-bottom);}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1px;font-weight:700;text-transform:uppercase;border-top:2px solid transparent;transition:color .15s,border-color .15s;padding:6px 2px;}
+.nav{height:var(--nav);flex-shrink:0;display:flex;align-items:stretch;background:rgba(4,14,28,0.97);border-top:1px solid var(--border);position:relative;z-index:20;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{flex:0 0 auto;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);font-family:var(--cond);font-size:9px;letter-spacing:1px;font-weight:700;text-transform:uppercase;border-top:2px solid transparent;transition:color .15s,border-color .15s;padding:6px 4px;}
 .nav-btn .ic{font-size:17px;line-height:1;transition:transform .15s;}
 .nav-btn.active{color:var(--acc);border-top-color:var(--acc);}
 .nav-btn.active .ic{transform:scale(1.1);}
@@ -941,7 +942,7 @@ tr.synop-decoded-row td{background:rgba(2,8,18,0.85);padding:10px;border-bottom:
     <button class="nav-btn" data-tab="taf" onclick="switchTab('taf')"><span class="ic">📊</span>TAF</button>
     <button class="nav-btn" data-tab="synop" onclick="switchTab('synop')"><span class="ic">🌐</span>SYNOP</button>
     <button class="nav-btn" data-tab="stations" onclick="switchTab('stations')"><span class="ic">⊞</span>Stations</button>
-    <button class="nav-btn" data-tab="atc"><span class="ic">🎙</span>ATC</button>
+    <button class="nav-btn" data-tab="atc" onclick="switchTab('atc')"><span class="ic">🎙</span>ATC</button>
     <button class="nav-btn" data-tab="weather" onclick="switchTab('weather')"><span class="ic">🌤</span>Weather</button>
   </nav>
 </div>
