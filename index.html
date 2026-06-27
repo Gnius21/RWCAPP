@@ -356,6 +356,44 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 .speci-banner .close{float:right;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}
 .toast{position:fixed;bottom:calc(var(--nav) + 12px);right:12px;left:12px;z-index:998;padding:11px 14px;background:var(--alert);color:#fff;border-radius:var(--r);font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:1px;box-shadow:0 6px 24px rgba(255,95,95,0.45);animation:toastIn .3s ease-out;}
 @keyframes toastIn{from{transform:translateY(80px);opacity:0;}to{transform:none;opacity:1;}}
+
+/* ============ DESKTOP OPTIMIZATION ============ */
+@media (min-width:780px){
+  :root{--hdr:60px;--nav:62px;}
+  .hdr{padding:0 24px;}
+  .hdr-title{font-size:18px;}
+  .hdr-sub{font-size:10px;}
+  .hdr-clock .tm{font-size:17px;}
+  .hdr-clock .lbl{font-size:9px;}
+  .hdr-btn{width:38px;height:38px;font-size:17px;}
+  .vis-pill{font-size:13px;padding:5px 12px;}
+  /* center nav, larger targets */
+  .nav{justify-content:center;overflow-x:visible;}
+  .nav-btn{min-width:96px;font-size:10px;padding:8px 10px;cursor:pointer;}
+  .nav-btn .ic{font-size:19px;}
+  .nav-btn:hover{color:var(--acc);}
+  /* center content column */
+  .panel{max-width:1200px;margin:0 auto;padding:18px 24px 36px;}
+  /* METAR cards become a responsive grid */
+  .metar-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start;}
+  .mc{transition:border-color .15s,transform .15s,box-shadow .15s;}
+  .mc:hover{border-color:var(--border-hi);transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,0,0,0.35);}
+  /* SYNOP report tiles wider */
+  .sy-grid{grid-template-columns:repeat(4,1fr);}
+  /* lessons: two-column cards + larger pictures */
+  .lsn-pic-grid{grid-template-columns:1fr 1fr;}
+  .lsn-pic-card.wide{grid-column:auto;}
+  .lsn-link-item{cursor:pointer;}
+  /* nicer scrollbar on desktop */
+  .scroll::-webkit-scrollbar{width:10px;}
+  .scroll::-webkit-scrollbar-thumb{background:rgba(85,193,255,0.22);border-radius:6px;}
+  .scroll::-webkit-scrollbar-thumb:hover{background:rgba(85,193,255,0.38);}
+  .scroll::-webkit-scrollbar-track{background:transparent;}
+}
+@media (min-width:1180px){
+  .metar-cards{grid-template-columns:repeat(3,1fr);}
+  .lsn-pic-grid{grid-template-columns:1fr 1fr 1fr;}
+}
 </style>
 </head>
 <body>
@@ -2243,6 +2281,11 @@ async function fetchRetry(url,n=2){
   return{ok:false};
 }
 
+/* ── CACHE (instant load from last good data) ── */
+const LS='rwc1_', CACHE_MAX=3*3600*1000; // keep ~3h
+function cacheSet(k,v){try{localStorage.setItem(LS+k,JSON.stringify({t:Date.now(),v}));}catch(e){}}
+function cacheGet(k){try{const s=localStorage.getItem(LS+k);if(!s)return null;const o=JSON.parse(s);if(Date.now()-o.t>CACHE_MAX)return null;return o.v;}catch(e){return null;}}
+
 /* ── VIS (KNMI Bonaire) ── */
 function extractVis(text){
   if(!text)return null;
@@ -2253,19 +2296,22 @@ function extractVis(text){
   if(m)return{m:parseInt(m[1])};
   return null;
 }
-async function updateVis(){
+function paintVis(km){
   const dot=$('vis-dot'), val=$('vis-value');
-  const out=await fetchRetry(KNMI_URL);
-  if(!out.ok){if(val)val.textContent='—';return;}
-  const r=extractVis(out.text);
-  if(!r){if(val)val.textContent='—';return;}
-  const km=r.m;
   if(val)val.textContent=km>=1000?`${(km/1000).toFixed(1)} km`:`${km} m`;
   if(dot){
     dot.className='vis-dot';
     if(km<2000)dot.classList.add('low');
     else if(km<8000)dot.classList.add('warn');
   }
+}
+async function updateVis(){
+  const out=await fetchRetry(KNMI_URL);
+  if(!out.ok){if(!cacheGet('vis')){const v=$('vis-value');if(v)v.textContent='—';}return;}
+  const r=extractVis(out.text);
+  if(!r){if(!cacheGet('vis')){const v=$('vis-value');if(v)v.textContent='—';}return;}
+  cacheSet('vis',r.m);
+  paintVis(r.m);
 }
 
 /* ── METAR PARSE ── */
@@ -2370,6 +2416,7 @@ function renderMetar(icao,raw){
   const isSpeci=/^SPECI\b/i.test(metarLine);
   const isAuto=/\bAUTO\b/i.test(metarLine);
   st.lastRaw=metarLine;
+  cacheSet('m_'+icao,metarLine);
   const prevTime=st.lastTime;st.lastTime=p.time;
   const isNew=prevTime!==p.time;
 
@@ -2577,6 +2624,7 @@ function applyTafAlerts(tds,seg){
 function renderTafRow(icao,rawText){
   if(!rawText||!tafTbody)return;
   const parsed=parseTaf(sanitize(rawText));if(!parsed)return;
+  cacheSet('t_'+icao,rawText);
   const tr=tafTbody.querySelector(`tr[data-taf-base][data-icao="${icao}"]`);if(!tr)return;
   const tds=tr.querySelectorAll('td');
   tds[1].textContent=parsed.valid;tds[2].textContent=parsed.base.wind;
@@ -2598,6 +2646,7 @@ async function loadTaf(icao){
   if(out.ok)renderTafRow(icao,out.text);
 }
 async function loadAllTafs(){
+  TAF_ICAOS.forEach(icao=>{const c=cacheGet('t_'+icao);if(c)renderTafRow(icao,c);});
   await Promise.all(TAF_ICAOS.map(loadTaf));
   const e=$('taf-updated');if(e)e.textContent=nowStamp();
 }
@@ -3016,6 +3065,7 @@ ${parsed.reports.length?parsed.reports.map(renderSynopReport).join(''):'<div cla
 function renderSynopStation(source,rawText){
   const text=sanitize(rawText);
   const parsed=parseSynopBulletin(text);
+  cacheSet('s_'+source.station+'_'+source.key,rawText);
   synopStationData[source.station][source.key]={parsed,rawText};
   updateSynopStationCard(source.station);
   const e=$('synop-updated');if(e)e.textContent=nowStamp();
@@ -3024,7 +3074,10 @@ async function loadSynopSource(source){
   const out=await fetchRetry(source.url);
   if(out.ok)renderSynopStation(source,out.text);
 }
-async function loadAllSynops(){await Promise.all(SYNOP_SOURCES.map(loadSynopSource));}
+async function loadAllSynops(){
+  SYNOP_SOURCES.forEach(s=>{const c=cacheGet('s_'+s.station+'_'+s.key);if(c)renderSynopStation(s,c);});
+  await Promise.all(SYNOP_SOURCES.map(loadSynopSource));
+}
 
 /* ── STATIONS ── */
 const API_BASE='https://curacao-weather-api.generast.workers.dev/';
@@ -3299,6 +3352,9 @@ buildTafTable();
 buildATC();
 
 (async function init(){
+  // Instant paint from last good data, then refresh in background
+  const cv=cacheGet('vis');if(cv!=null)paintVis(cv);
+  STATIONS.forEach(icao=>{const c=cacheGet('m_'+icao);if(c)renderMetar(icao,c);});
   await Promise.all([updateVis(), refreshAllMetars()]);
   // auto test mode if no live data
   const any=STATIONS.some(icao=>metarState[icao]&&metarState[icao].lastRaw);
