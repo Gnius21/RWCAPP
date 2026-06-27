@@ -2675,16 +2675,18 @@ function encGetIIIII(){
   return v.replace('b',''); // strip 'b' suffix used to distinguish TNCC
 }
 function encVV(km){
+  // WMO Code Table 4377 — horizontal visibility at the surface
   const k=parseFloat(km);
   if(isNaN(k)||k<0) return '//';
-  const m=k*1000;
-  if(m<100) return '00';
-  if(m<=5000) return String(Math.min(50,Math.round(m/100))).padStart(2,'0');
-  if(k<=25) return String(Math.min(70,Math.round(k+45))).padStart(2,'0');
-  if(k<=70) return String(Math.min(79,Math.round((k-30)/5)+71)).padStart(2,'0');
-  if(k<=100) return String(Math.min(85,Math.round((k-75)/5)+80)).padStart(2,'0');
-  if(k<=130) return String(Math.min(88,Math.round((k-110)/10)+86)).padStart(2,'0');
-  return '89';
+  if(k<0.1) return '00';                                       // < 0.1 km
+  if(k<=5) return String(Math.round(k*10)).padStart(2,'0');    // 01–50: 0.1–5.0 km in 0.1 km steps
+  if(k<=30){                                                   // 56–80: 6–30 km in 1 km steps
+    let kk=Math.round(k);
+    if(kk<=5) return '50';                                     // 5.x rounding down (51–55 are unused)
+    return String(kk+50).padStart(2,'0');
+  }
+  if(k<=70) return String(Math.round((k-30)/5)+80).padStart(2,'0'); // 81–88: 35–70 km in 5 km steps
+  return '89';                                                 // > 70 km
 }
 function encT(val){
   const v=parseFloat(val);
@@ -2729,9 +2731,14 @@ function encUpdate(){
   let needExt=false;
   if(ddRaw!==''){
     const deg=parseInt(ddRaw);
-    if(ffInt===0){dd='00';ff='00';}
-    else if(deg===0||deg===360){dd='36';}
-    else{dd=String(Math.round(deg/10)).padStart(2,'0');}
+    if(!isNaN(deg)){
+      if(ffInt===0){dd='00';}                 // calm
+      else{
+        let t=Math.round(deg/10)%36;          // tens of degrees, 0–35
+        if(t===0) t=36;                        // 360° (and 0°) → 36; never 00 for moving air
+        dd=String(t).padStart(2,'0');
+      }
+    }
   }
   if(ffRaw!==''){
     ff=ffInt>=99?'99':String(ffInt).padStart(2,'0');
@@ -2790,8 +2797,8 @@ function encUpdate(){
   if(tdEnc){const g='2'+tdEnc;groups.push(g);bdwn.push([g,`Dew point: ${v('enc-td')}°C`]);}
   // Station pressure
   if(pstnEnc){const g='3'+pstnEnc;groups.push(g);bdwn.push([g,`Station pressure: ${v('enc-pstn')} hPa`]);}
-  // MSL pressure
-  if(pmslEnc){const g='4'+pmslEnc;groups.push(g);bdwn.push([g,`MSL pressure (QNH): ${v('enc-pmsl')} hPa`]);}
+  // MSL pressure (reduced to mean sea level)
+  if(pmslEnc){const g='4'+pmslEnc;groups.push(g);bdwn.push([g,`MSL pressure (reduced): ${v('enc-pmsl')} hPa`]);}
   // Tendency
   if(aVal!==''&&pppRaw!==''){
     const pppVal=Math.abs(parseFloat(pppRaw));
@@ -2800,16 +2807,17 @@ function encUpdate(){
     groups.push(g);
     bdwn.push([g,`Pres tendency: char ${aVal}, change ${parseFloat(pppRaw)>=0?'+':''}${pppRaw} hPa/3h`]);
   }
-  // Precipitation (Sec 1)
-  if(ir!=='3'&&ir!=='4'&&rrrRaw!==''&&trVal!==''){
+  // Precipitation 6RRRtR — placed in Section 1 when iR=1 (iR=2 → Section 3 below)
+  let precipGroup=null,precipDesc='';
+  if((ir==='1'||ir==='2')&&rrrRaw!==''&&trVal!==''){
     const rrrCode=encRRR(rrrRaw);
     if(rrrCode){
-      const g='6'+rrrCode+trVal;
-      groups.push(g);
+      precipGroup='6'+rrrCode+trVal;
       const pDesc=['','6h','12h','18h','24h','1h','2h','3h','9h','15h'][parseInt(trVal)]||trVal+'h';
-      bdwn.push([g,`Precipitation: ${rrrRaw} mm / ${pDesc}`]);
+      precipDesc=`Precipitation: ${rrrRaw} mm / ${pDesc}`;
     }
   }
+  if(precipGroup&&ir==='1'){groups.push(precipGroup);bdwn.push([precipGroup,precipDesc]);}
   // Present weather
   const inclWW=ix==='1'||ix==='4';
   if(inclWW&&wwVal!==''&&w1Val!==''&&w2Val!==''){
@@ -2831,6 +2839,7 @@ function encUpdate(){
   const tminEnc=encT(tminRaw);
   if(tmaxEnc){const g='1'+tmaxEnc;sec3.push(g);s3bdwn.push([g,`T max: ${tmaxRaw}°C`]);}
   if(tminEnc){const g='2'+tminEnc;sec3.push(g);s3bdwn.push([g,`T min: ${tminRaw}°C`]);}
+  if(precipGroup&&ir==='2'){sec3.push(precipGroup);s3bdwn.push([precipGroup,precipDesc]);}
 
   let body=groups.join(' ');
   if(sec3.length){body+=' 333 '+sec3.join(' ');bdwn.push(['333','Section 3 separator']);s3bdwn.forEach(r=>bdwn.push(r));}
@@ -2878,16 +2887,16 @@ const T_A={'0':'Rising then falling','1':'Rising then steady','2':'Rising','3':'
 const T_TR={'1':'6h','2':'12h','3':'18h','4':'24h','5':'1h','6':'2h','7':'3h','8':'9h','9':'15h'};
 
 function decodeVV(vv){
+  // WMO Code Table 4377 — horizontal visibility at the surface
   if(!vv||vv==='//') return null;
   const n=parseInt(vv);
   if(isNaN(n)) return null;
   if(n===0) return '<100 m';
   if(n<=50){const m=n*100;return m>=1000?`${(m/1000).toFixed(1)} km`:`${m} m`;}
-  if(n<=70) return`${n-45} km`;
-  if(n<=79) return`${(n-71)*5+30} km`;
-  if(n<=85) return`${(n-80)*5+75} km`;
-  if(n<=88) return`${(n-86)*10+110} km`;
-  if(n===89) return'≥140 km';
+  if(n<=55) return null;                       // 51–55 not used
+  if(n<=80) return`${n-50} km`;                // 56–80 → 6–30 km
+  if(n<=88) return`${(n-80)*5+30} km`;         // 81–88 → 35–70 km
+  if(n===89) return'>70 km';
   const a={'90':'<0.05 km','91':'0.05 km','92':'0.2 km','93':'0.5 km','94':'1 km','95':'2 km','96':'4 km','97':'10 km','98':'20 km','99':'≥50 km'};
   return a[vv]||null;
 }
