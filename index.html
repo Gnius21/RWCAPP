@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="RWCAPP"/>
+<meta name="theme-color" content="#020d18"/>
+<meta name="description" content="Live METAR, TAF, SYNOP and observer tools for Curaçao, Aruba and Bonaire."/>
 <title>RWCAPP</title>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" type="image/svg+xml" href="icon.svg"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -232,6 +238,12 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 .enc-row:last-child{border-bottom:none;}
 .enc-row-code{font-family:var(--mono);font-weight:700;color:var(--acc);letter-spacing:.5px;white-space:nowrap;}
 .enc-row-desc{color:rgba(200,225,255,0.6);font-family:var(--sans);line-height:1.4;}
+.enc-chk{display:flex;align-items:center;gap:6px;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;color:#cfe6ff;cursor:pointer;padding:5px 0;}
+.enc-chk input{width:16px;height:16px;accent-color:var(--acc);cursor:pointer;}
+.enc-mode{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:1px;color:var(--acc);background:rgba(27,124,255,0.12);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-left:6px;text-transform:none;}
+.enc-verify{font-family:var(--sans);font-size:12px;line-height:1.5;color:rgba(200,225,255,0.85);background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:9px 12px;margin-top:2px;}
+.enc-verify .ev-hdr{font-family:var(--cond);font-weight:800;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--ok);margin-bottom:5px;}
+.enc-verify b{color:#eef5ff;font-weight:600;}
 /* LESSONS */
 #lessons-sub-bar{position:sticky;top:0;z-index:15;background:#04101f;box-shadow:0 8px 12px -8px rgba(0,0,0,0.7);}
 .lsn-idx{display:flex;flex-wrap:wrap;gap:5px;padding:10px 10px 4px;}
@@ -751,6 +763,14 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
                     <option value="4">4 – Not staffed</option>
                   </select>
                 </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Obs minutes (gg)</div>
+                  <input class="enc-inp" type="number" id="enc-min" min="0" max="59" placeholder="e.g. 00" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Time group</div>
+                  <label class="enc-chk"><input type="checkbox" id="enc-incl9" onchange="encUpdate()"> Include 9GGgg</label>
+                </div>
               </div>
             </div>
 
@@ -765,6 +785,10 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
                 <div class="enc-field">
                   <div class="enc-lbl">Speed ff</div>
                   <input class="enc-inp" type="number" id="enc-ff" min="0" max="250" placeholder="e.g. 14" oninput="encUpdate()">
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Variable dir</div>
+                  <label class="enc-chk"><input type="checkbox" id="enc-vrb" onchange="encUpdate()"> VRB (dd=99)</label>
                 </div>
                 <div class="enc-field wide">
                   <div class="enc-lbl">Visibility (km)</div>
@@ -881,6 +905,10 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
                   <div class="enc-lbl">Dew Point (°C)</div>
                   <input class="enc-inp" type="number" id="enc-td" step="0.1" placeholder="e.g. 26.7" oninput="encUpdate()">
                 </div>
+                <div class="enc-field wide">
+                  <div class="enc-lbl">Relative Humidity (%) — used as 29UUU only if no dew point</div>
+                  <input class="enc-inp" type="number" id="enc-rh" min="0" max="100" placeholder="e.g. 79" oninput="encUpdate()">
+                </div>
               </div>
             </div>
 
@@ -920,8 +948,8 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 
             <!-- Weather -->
             <div class="enc-sec">
-              <div class="enc-sec-hdr">Present &amp; Past Weather</div>
-              <div class="enc-grid">
+              <div class="enc-sec-hdr">Present &amp; Past Weather <span id="enc-wx-mode" class="enc-mode">manned · ww</span></div>
+              <div class="enc-grid" id="enc-wx-manned">
                 <div class="enc-field wide">
                   <div class="enc-lbl">Present Weather ww</div>
                   <select class="enc-inp" id="enc-ww" onchange="encUpdate()">
@@ -1081,6 +1109,139 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
                   </select>
                 </div>
               </div>
+              <!-- Automatic-station weather (WMO Tables 4680 wawa / 4531 Wa) -->
+              <div class="enc-grid" id="enc-wx-auto" style="display:none">
+                <div class="enc-field wide">
+                  <div class="enc-lbl">Present Weather wawa (auto, Table 4680)</div>
+                  <select class="enc-inp" id="enc-wawa" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <optgroup label="00–19  No / slight phenomena">
+                      <option value="00">00 – No significant weather</option>
+                      <option value="01">01 – Clouds dissolving</option>
+                      <option value="02">02 – Sky unchanged</option>
+                      <option value="03">03 – Clouds developing</option>
+                      <option value="04">04 – Haze/smoke/dust, vis ≥1 km</option>
+                      <option value="05">05 – Haze/smoke/dust, vis &lt;1 km</option>
+                      <option value="10">10 – Mist</option>
+                      <option value="11">11 – Diamond dust</option>
+                      <option value="12">12 – Distant lightning</option>
+                      <option value="18">18 – Squalls</option>
+                    </optgroup>
+                    <optgroup label="20–29  Events in past hour">
+                      <option value="20">20 – Fog (past hr)</option>
+                      <option value="21">21 – Precipitation (past hr)</option>
+                      <option value="22">22 – Drizzle/snow grains (past hr)</option>
+                      <option value="23">23 – Rain (past hr)</option>
+                      <option value="24">24 – Snow (past hr)</option>
+                      <option value="25">25 – Freezing drizzle/rain (past hr)</option>
+                      <option value="26">26 – Thunderstorm (past hr)</option>
+                    </optgroup>
+                    <optgroup label="30–39  Fog">
+                      <option value="30">30 – Fog</option>
+                      <option value="31">31 – Fog in patches</option>
+                      <option value="32">32 – Fog, thinning</option>
+                      <option value="33">33 – Fog, no change</option>
+                      <option value="34">34 – Fog, thickening</option>
+                      <option value="35">35 – Fog, depositing rime</option>
+                    </optgroup>
+                    <optgroup label="40–49  Precipitation (unspecified)">
+                      <option value="40">40 – Precipitation</option>
+                      <option value="41">41 – Precip slight/moderate</option>
+                      <option value="42">42 – Precip heavy</option>
+                      <option value="43">43 – Liquid precip slight/mod</option>
+                      <option value="44">44 – Liquid precip heavy</option>
+                      <option value="45">45 – Solid precip slight/mod</option>
+                      <option value="46">46 – Solid precip heavy</option>
+                      <option value="47">47 – Freezing precip slight/mod</option>
+                      <option value="48">48 – Freezing precip heavy</option>
+                    </optgroup>
+                    <optgroup label="50–59  Drizzle">
+                      <option value="50">50 – Drizzle</option>
+                      <option value="51">51 – Drizzle slight</option>
+                      <option value="52">52 – Drizzle moderate</option>
+                      <option value="53">53 – Drizzle heavy</option>
+                      <option value="54">54 – Freezing drizzle slight</option>
+                      <option value="55">55 – Freezing drizzle moderate</option>
+                      <option value="56">56 – Freezing drizzle heavy</option>
+                      <option value="57">57 – Drizzle + rain slight</option>
+                      <option value="58">58 – Drizzle + rain mod/heavy</option>
+                    </optgroup>
+                    <optgroup label="60–69  Rain">
+                      <option value="60">60 – Rain</option>
+                      <option value="61">61 – Rain slight</option>
+                      <option value="62">62 – Rain moderate</option>
+                      <option value="63">63 – Rain heavy</option>
+                      <option value="64">64 – Freezing rain slight</option>
+                      <option value="65">65 – Freezing rain moderate</option>
+                      <option value="66">66 – Freezing rain heavy</option>
+                      <option value="67">67 – Rain+snow slight</option>
+                      <option value="68">68 – Rain+snow mod/heavy</option>
+                    </optgroup>
+                    <optgroup label="70–79  Snow / Ice">
+                      <option value="70">70 – Snow</option>
+                      <option value="71">71 – Snow slight</option>
+                      <option value="72">72 – Snow moderate</option>
+                      <option value="73">73 – Snow heavy</option>
+                      <option value="74">74 – Ice pellets slight</option>
+                      <option value="75">75 – Ice pellets moderate</option>
+                      <option value="76">76 – Ice pellets heavy</option>
+                      <option value="77">77 – Snow grains</option>
+                      <option value="78">78 – Ice crystals</option>
+                    </optgroup>
+                    <optgroup label="80–99  Showers / Thunderstorm">
+                      <option value="80">80 – Shower(s)/intermittent precip</option>
+                      <option value="81">81 – Rain shower slight</option>
+                      <option value="82">82 – Rain shower moderate</option>
+                      <option value="83">83 – Rain shower heavy</option>
+                      <option value="84">84 – Rain shower violent</option>
+                      <option value="85">85 – Snow shower slight</option>
+                      <option value="86">86 – Snow shower moderate</option>
+                      <option value="87">87 – Snow shower heavy</option>
+                      <option value="89">89 – Hail</option>
+                      <option value="90">90 – Thunderstorm</option>
+                      <option value="91">91 – TS slight/mod, no precip</option>
+                      <option value="92">92 – TS slight/mod, rain/snow</option>
+                      <option value="93">93 – TS slight/mod, hail</option>
+                      <option value="94">94 – TS heavy, no precip</option>
+                      <option value="95">95 – TS heavy, rain/snow</option>
+                      <option value="96">96 – TS heavy, hail</option>
+                      <option value="99">99 – Tornado</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Past Wx Wa1 (Table 4531)</div>
+                  <select class="enc-inp" id="enc-wa1" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="0">0 – No sig weather</option>
+                    <option value="1">1 – Visibility reduced</option>
+                    <option value="2">2 – Blowing, vis reduced</option>
+                    <option value="3">3 – Fog</option>
+                    <option value="4">4 – Precipitation</option>
+                    <option value="5">5 – Drizzle</option>
+                    <option value="6">6 – Rain</option>
+                    <option value="7">7 – Snow/ice pellets</option>
+                    <option value="8">8 – Showers</option>
+                    <option value="9">9 – Thunderstorm</option>
+                  </select>
+                </div>
+                <div class="enc-field">
+                  <div class="enc-lbl">Past Wx Wa2 (Table 4531)</div>
+                  <select class="enc-inp" id="enc-wa2" onchange="encUpdate()">
+                    <option value="">— omit —</option>
+                    <option value="0">0 – No sig weather</option>
+                    <option value="1">1 – Visibility reduced</option>
+                    <option value="2">2 – Blowing, vis reduced</option>
+                    <option value="3">3 – Fog</option>
+                    <option value="4">4 – Precipitation</option>
+                    <option value="5">5 – Drizzle</option>
+                    <option value="6">6 – Rain</option>
+                    <option value="7">7 – Snow/ice pellets</option>
+                    <option value="8">8 – Showers</option>
+                    <option value="9">9 – Thunderstorm</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <!-- Precipitation -->
@@ -1132,6 +1293,7 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
               </div>
               <div class="enc-out" id="enc-out">Fill in the fields above to generate a SYNOP message.</div>
               <div class="enc-bdwn" id="enc-bdwn"></div>
+              <div class="enc-verify" id="enc-verify" style="display:none"></div>
             </div>
           </div>
         </div>
@@ -2726,18 +2888,20 @@ function encUpdate(){
   const ddRaw=v('enc-dd');
   const ffRaw=v('enc-ff');
   const ffInt=parseInt(ffRaw);
+  const vrb=p('enc-vrb')&&p('enc-vrb').checked;
   let dd='//';
   let ff='//';
   let needExt=false;
-  if(ddRaw!==''){
+  if(ffRaw!==''&&ffInt===0){
+    dd='00';                                  // calm → dd=00 regardless of direction
+  }else if(vrb){
+    dd='99';                                  // variable direction
+  }else if(ddRaw!==''){
     const deg=parseInt(ddRaw);
     if(!isNaN(deg)){
-      if(ffInt===0){dd='00';}                 // calm
-      else{
-        let t=Math.round(deg/10)%36;          // tens of degrees, 0–35
-        if(t===0) t=36;                        // 360° (and 0°) → 36; never 00 for moving air
-        dd=String(t).padStart(2,'0');
-      }
+      let t=Math.round(deg/10)%36;            // tens of degrees, 0–35
+      if(t===0) t=36;                          // 360° (and 0°) → 36; never 00 for moving air
+      dd=String(t).padStart(2,'0');
     }
   }
   if(ffRaw!==''){
@@ -2757,6 +2921,12 @@ function encUpdate(){
   const wwVal=v('enc-ww');
   const w1Val=v('enc-w1');
   const w2Val=v('enc-w2');
+  const wawaVal=v('enc-wawa');
+  const wa1Val=v('enc-wa1');
+  const wa2Val=v('enc-wa2');
+  const rhRaw=v('enc-rh');
+  const minVal=v('enc-min');
+  const incl9=p('enc-incl9')&&p('enc-incl9').checked;
   const nhVal=v('enc-nh');
   const clVal=v('enc-cl');
   const cmVal=v('enc-cm');
@@ -2784,7 +2954,8 @@ function encUpdate(){
   let g2=N+dd+ff;
   groups.push(g2);
   const wuLabel=iw==='3'||iw==='4'?'kn':'m/s';
-  bdwn.push([g2, `N=${N} dd=${dd} ff=${ff} → cover ${N}/8, dir ${dd==='00'?'calm':dd+'0°'}, ${ffInt||0} ${wuLabel}`]);
+  const dirTxt=dd==='00'?'calm':dd==='99'?'variable':dd==='//'?'—':dd+'0°';
+  bdwn.push([g2, `N=${N} dd=${dd} ff=${ff} → cover ${N}/8, dir ${dirTxt}, ${ffInt||0} ${wuLabel}`]);
   if(needExt){
     const ext='00'+String(ffInt).padStart(3,'0');
     groups.push(ext);
@@ -2793,8 +2964,12 @@ function encUpdate(){
 
   // Temperature
   if(tEnc){const g='1'+tEnc;groups.push(g);bdwn.push([g,`Temperature: ${v('enc-t')}°C`]);}
-  // Dew point
+  // Dew point 2SnTdTdTd — or relative humidity as 29UUU when no dew point given
   if(tdEnc){const g='2'+tdEnc;groups.push(g);bdwn.push([g,`Dew point: ${v('enc-td')}°C`]);}
+  else if(rhRaw!==''){
+    const rh=Math.min(100,Math.max(0,Math.round(parseFloat(rhRaw))));
+    if(!isNaN(rh)){const g='29'+String(rh).padStart(3,'0');groups.push(g);bdwn.push([g,`Relative humidity: ${rh}% (29UUU, no dew point)`]);}
+  }
   // Station pressure
   if(pstnEnc){const g='3'+pstnEnc;groups.push(g);bdwn.push([g,`Station pressure: ${v('enc-pstn')} hPa`]);}
   // MSL pressure (reduced to mean sea level)
@@ -2818,18 +2993,37 @@ function encUpdate(){
     }
   }
   if(precipGroup&&ir==='1'){groups.push(precipGroup);bdwn.push([precipGroup,precipDesc]);}
-  // Present weather
-  const inclWW=ix==='1'||ix==='4';
-  if(inclWW&&wwVal!==''&&w1Val!==''&&w2Val!==''){
+  // Present & past weather 7wwW1W2 (manned) or 7wawaWa1Wa2 (automatic).
+  // Automatic stations (iX 4/5/7) use Table 4680 (wawa) + Table 4531 (Wa).
+  const isAuto=ix==='4'||ix==='5'||ix==='7';
+  const wxMode=document.getElementById('enc-wx-mode');
+  const mannedBox=document.getElementById('enc-wx-manned');
+  const autoBox=document.getElementById('enc-wx-auto');
+  if(mannedBox)mannedBox.style.display=isAuto?'none':'';
+  if(autoBox)autoBox.style.display=isAuto?'':'none';
+  if(wxMode)wxMode.textContent=isAuto?'automatic · wawa (Table 4680)':'manned · ww (Table 4677)';
+  // ww group is included for iX 1 (manned) and iX 4 (automatic with weather)
+  if(ix==='1'&&wwVal!==''&&w1Val!==''&&w2Val!==''){
     const g='7'+wwVal.padStart(2,'0')+w1Val+w2Val;
     groups.push(g);
-    bdwn.push([g,`ww=${wwVal} W1=${w1Val} W2=${w2Val}`]);
+    bdwn.push([g,`ww=${wwVal} W1=${w1Val} W2=${w2Val} (manned)`]);
+  }else if(ix==='4'&&wawaVal!==''&&wa1Val!==''&&wa2Val!==''){
+    const g='7'+wawaVal.padStart(2,'0')+wa1Val+wa2Val;
+    groups.push(g);
+    bdwn.push([g,`wawa=${wawaVal} Wa1=${wa1Val} Wa2=${wa2Val} (automatic)`]);
   }
   // Cloud types
   if(nhVal!==''&&clVal!==''&&cmVal!==''&&chVal!==''){
     const g='8'+nhVal+clVal+cmVal+chVal;
     groups.push(g);
     bdwn.push([g,`Nh=${nhVal} CL=${clVal} CM=${cmVal} CH=${chVal}`]);
+  }
+  // Time of observation 9GGgg (exact hour + minutes)
+  if(incl9){
+    const ggm=String(Math.min(59,Math.max(0,parseInt(minVal)||0))).padStart(2,'0');
+    const g='9'+gg+ggm;
+    groups.push(g);
+    bdwn.push([g,`Obs time: ${gg}:${ggm} UTC`]);
   }
 
   // Section 3
@@ -2851,6 +3045,35 @@ function encUpdate(){
   if(outEl) outEl.textContent=full;
   if(bdwnEl){
     bdwnEl.innerHTML=bdwn.map(([code,desc])=>`<div class="enc-row"><span class="enc-row-code">${escHtml(code)}</span><span class="enc-row-desc">${escHtml(desc)}</span></div>`).join('');
+  }
+
+  // Encode↔decode cross-check: round-trip the generated bulletin through the
+  // same decoder the app uses for live SYNOPs, and echo the key values back.
+  const verEl=document.getElementById('enc-verify');
+  if(verEl){
+    try{
+      const parsed=parseSynopBulletin(full);
+      const r=parsed.reports&&parsed.reports[0];
+      if(r){
+        const rows=[];
+        if(r.visText) rows.push(`Vis <b>${escHtml(r.visText)}</b>`);
+        let wind=r.dir==='Calm'?'Calm':(r.dir==='VRB'?'VRB':(r.dir==null?'—':r.dir+'°'));
+        if(r.windSp!=null) wind+=` @ ${r.windSp} ${parsed.windUnits}`;
+        rows.push(`Wind <b>${escHtml(wind)}</b>`);
+        if(r.N!=null) rows.push(`Cloud <b>${escHtml(T_N[r.N]||r.N)}</b>`);
+        if(r.T!=null) rows.push(`Temp <b>${r.T}°C</b>`);
+        if(r.Td!=null) rows.push(`Dew <b>${r.Td}°C</b>`);
+        else if(r.RH!=null) rows.push(`RH <b>${r.RH}%</b>`);
+        if(r.Pmsl!=null) rows.push(`MSLP <b>${r.Pmsl} hPa</b>`);
+        else if(r.Pstn!=null) rows.push(`QFE <b>${r.Pstn} hPa</b>`);
+        if(r.ww!=null) rows.push(`Wx <b>${escHtml(T_WW[r.ww]||r.ww)}</b>`);
+        if(r.precip&&r.precip.amount!=null) rows.push(`Precip <b>${escHtml(String(r.precip.amount))} mm/${escHtml(r.precip.pDesc||r.precip.period||'')}</b>`);
+        if(r.Tmax!=null) rows.push(`Tmax <b>${r.Tmax}°C</b>`);
+        if(r.Tmin!=null) rows.push(`Tmin <b>${r.Tmin}°C</b>`);
+        verEl.style.display='';
+        verEl.innerHTML=`<div class="ev-hdr">✓ Decoded back — round-trip check</div>${rows.join(' &nbsp;·&nbsp; ')}`;
+      }else{verEl.style.display='none';}
+    }catch(e){verEl.style.display='none';}
   }
 }
 function encCopy(){
@@ -3542,6 +3765,17 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
 });
+</script>
+
+<script>
+/* PWA: register service worker for offline app shell. file:// has no SW. */
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function (e) {
+      console.warn('SW registration failed', e);
+    });
+  });
+}
 </script>
 
 </body>
