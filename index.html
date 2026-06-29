@@ -160,6 +160,9 @@ a{color:var(--acc);text-decoration:none;}
 .synop-stn-flag{font-size:22px;filter:drop-shadow(0 0 6px rgba(85,193,255,0.4));}
 .synop-stn-icao{font-family:var(--cond);font-weight:800;font-size:18px;letter-spacing:2px;color:var(--acc);}
 .synop-stn-sub{font-family:var(--cond);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+.synop-qc{font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.5px;padding:7px 12px;border-radius:7px;margin-bottom:9px;border:1px solid var(--border);}
+.synop-qc.ok{color:var(--ok);background:var(--ok-dim);border-color:rgba(63,207,130,0.3);}
+.synop-qc.warn{color:var(--warn);background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.35);}
 .synop-src-lbl{font-family:var(--cond);font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-weight:700;padding:6px 13px 3px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2);}
 .synop-raw-str{padding:5px 13px 8px;font-family:var(--mono);font-size:9px;color:rgba(160,195,235,0.3);word-break:break-all;line-height:1.5;border-top:1px solid rgba(30,50,80,0.3);}
 
@@ -246,6 +249,11 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 .enc-verify b{color:#eef5ff;font-weight:600;}
 /* LESSONS */
 #lessons-sub-bar{position:sticky;top:0;z-index:15;background:#04101f;box-shadow:0 8px 12px -8px rgba(0,0,0,0.7);}
+.lsn-search-wrap{padding:4px 10px 10px;}
+.lsn-search{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:8px;color:#e8f4ff;font-family:var(--sans);font-size:14px;padding:9px 12px;outline:none;}
+.lsn-search:focus{border-color:var(--acc);background:rgba(27,124,255,0.07);}
+.lsn-search::placeholder{color:var(--muted);}
+.lsn-search-none{margin-top:8px;padding:14px;text-align:center;color:var(--muted);font-family:var(--cond);font-size:12px;letter-spacing:1px;}
 .lsn-idx{display:flex;flex-wrap:wrap;gap:5px;padding:10px 10px 4px;}
 .lsn-idx a{font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.8px;padding:5px 11px;border:1px solid var(--border);border-radius:5px;color:var(--acc);background:rgba(85,193,255,0.05);cursor:pointer;}
 .lsn-card{border-radius:var(--r2);border:1px solid var(--border);background:rgba(5,18,34,0.97);overflow:hidden;margin:0 10px 12px;}
@@ -417,6 +425,15 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
   .metar-cards{grid-template-columns:repeat(3,1fr);}
   .lsn-pic-grid{grid-template-columns:1fr 1fr 1fr;}
 }
+/* Accessibility: honour reduced-motion and provide a visible focus ring */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}
+}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+/* Non-colour status markers (so severity isn't conveyed by colour alone) */
+.vis-dot.warn::after,.vis-dot.low::after{content:'';}
+.mc-val.alert::before,.sy-val.alert::before{content:'\26A0\FE0E';font-size:.8em;margin-right:3px;opacity:.85;}
+.mc-val.warn::before,.sy-val.warn::before{content:'\25B3';font-size:.7em;margin-right:3px;opacity:.85;}
 </style>
 </head>
 <body>
@@ -1809,6 +1826,12 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
         <a onclick="document.getElementById('ls-pubs').scrollIntoView({behavior:'smooth',block:'start'})">WMO Pubs</a>
       </div>
 
+      <!-- Search -->
+      <div class="lsn-search-wrap">
+        <input type="search" id="lsn-search" class="lsn-search" placeholder="🔍 Search lessons (e.g. dew point, oktas, QNH)…" oninput="lessonSearch(this.value)" aria-label="Search lessons">
+        <div class="lsn-search-none" id="lsn-search-none" style="display:none">No lessons match — try another term.</div>
+      </div>
+
       <!-- L1: The Observer's Role -->
       <div class="lsn-card" id="ls1">
         <div class="lsn-hd">
@@ -2428,21 +2451,31 @@ async function fetchTimeout(url){
   try{const r=await fetch(url,{cache:'no-store',signal:ctrl.signal});clearTimeout(id);return r;}
   catch(e){clearTimeout(id);throw e;}
 }
+// Ordered list of ways to fetch a URL: direct first, then CORS proxies.
+// Each entry builds the request URL and extracts plain text from the response.
+const FETCH_SOURCES=[
+  {name:'direct', build:u=>u, extract:async r=>{const t=await r.text();return t&&t.trim();}},
+  {name:'allorigins', build:u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u), extract:async r=>{const j=await r.json();return j&&j.contents&&j.contents.trim();}},
+  {name:'corsproxy', build:u=>'https://corsproxy.io/?url='+encodeURIComponent(u), extract:async r=>{const t=await r.text();return t&&t.trim();}},
+  {name:'jina', build:u=>'https://r.jina.ai/https://'+u.replace(/^https?:\/\//,''), extract:async r=>{const t=await r.text();return t&&t.trim();}}
+];
+// Per-source health so we can show which proxy is working / down.
+const sourceHealth={};
+FETCH_SOURCES.forEach(s=>sourceHealth[s.name]={ok:0,fail:0,last:null});
+window.__sourceHealth=sourceHealth;
 async function robustFetch(url){
-  try{
-    const r=await fetchTimeout(url);
-    if(r&&r.ok){const t=await r.text();if(t&&t.trim())return{ok:true,text:t.trim()};}
-    if(r&&(r.status===404||r.status===410))return{ok:false,permanent:true};
-  }catch(e){}
-  try{
-    const r=await fetchTimeout('https://api.allorigins.win/get?url='+encodeURIComponent(url));
-    if(r&&r.ok){const j=await r.json();if(j&&j.contents&&j.contents.trim())return{ok:true,text:j.contents.trim()};}
-  }catch(e){}
-  try{
-    const stripped=url.replace(/^https?:\/\//,'');
-    const r=await fetchTimeout('https://r.jina.ai/https://'+stripped);
-    if(r&&r.ok){const t=await r.text();if(t&&t.trim())return{ok:true,text:t.trim()};}
-  }catch(e){}
+  for(const src of FETCH_SOURCES){
+    try{
+      const r=await fetchTimeout(src.build(url));
+      // A genuine "not found" from the direct source is permanent — don't keep retrying proxies.
+      if(src.name==='direct'&&r&&(r.status===404||r.status===410)){return{ok:false,permanent:true};}
+      if(r&&r.ok){
+        const text=await src.extract(r);
+        if(text){sourceHealth[src.name].ok++;sourceHealth[src.name].last=Date.now();return{ok:true,text,via:src.name};}
+      }
+    }catch(e){}
+    sourceHealth[src.name].fail++;
+  }
   return{ok:false};
 }
 async function fetchRetry(url,n=2){
@@ -3098,6 +3131,23 @@ window.encStnChange=encStnChange;
 window.encCopy=encCopy;
 window.encInitTime=encInitTime;
 
+/* Filter lesson cards by free text */
+function lessonSearch(q){
+  q=(q||'').trim().toLowerCase();
+  const cards=document.querySelectorAll('#lessons-sub-guide .lsn-card, #lessons-sub-guide .lsn-pubs');
+  const idx=document.querySelector('#lessons-sub-guide .lsn-idx');
+  let shown=0;
+  cards.forEach(c=>{
+    const match=!q||c.textContent.toLowerCase().indexOf(q)>=0;
+    c.style.display=match?'':'none';
+    if(match)shown++;
+  });
+  if(idx)idx.style.display=q?'none':'';
+  const none=document.getElementById('lsn-search-none');
+  if(none)none.style.display=(q&&shown===0)?'':'none';
+}
+window.lessonSearch=lessonSearch;
+
 /* ── SYNOP WMO FM-12 ── */
 const T_WW={'00':'No significant cloud','01':'Clouds dissolving','02':'Sky unchanged','03':'Clouds developing','04':'Smoke haze','05':'Haze','06':'Dust in suspension','07':'Dust raised by wind','08':'Dust/sand whirl','09':'Duststorm in sight','10':'Mist','11':'Shallow fog patches','12':'Continuous shallow fog','13':'Lightning, no thunder','14':'Precip not reaching ground','15':'Distant precip','16':'Precip near, not at station','17':'Thunderstorm, no precip','18':'Squalls','19':'Funnel cloud','20':'Drizzle/snow (past hr)','21':'Rain (past hr)','22':'Snow (past hr)','23':'Rain & snow (past hr)','24':'Freezing precip (past hr)','25':'Rain showers (past hr)','26':'Snow showers (past hr)','27':'Hail showers (past hr)','28':'Fog (past hr)','29':'Thunderstorm (past hr)','30':'Slight duststorm↓','31':'Slight duststorm=','32':'Slight duststorm↑','33':'Severe duststorm↓','34':'Severe duststorm=','35':'Severe duststorm↑','36':'Slight drifting snow','37':'Heavy drifting snow','38':'Slight blowing snow','39':'Heavy blowing snow','40':'Fog at distance','41':'Fog patches','42':'Fog thinning, sky vis','43':'Fog thinning, sky obs','44':'Fog, sky vis, no change','45':'Fog, sky obs, no change','46':'Fog thickening, sky vis','47':'Fog thickening, sky obs','48':'Fog + rime, sky vis','49':'Fog + rime, sky obs','50':'Drizzle slight intermit','51':'Drizzle slight cont','52':'Drizzle mod intermit','53':'Drizzle mod cont','54':'Drizzle heavy intermit','55':'Drizzle heavy cont','56':'Freezing drizzle slight','57':'Freezing drizzle mod/heavy','58':'Drizzle + rain slight','59':'Drizzle + rain mod/heavy','60':'Rain slight intermit','61':'Rain slight cont','62':'Rain mod intermit','63':'Rain mod cont','64':'Rain heavy intermit','65':'Rain heavy cont','66':'Freezing rain slight','67':'Freezing rain mod/heavy','68':'Rain + snow slight','69':'Rain + snow mod/heavy','70':'Snow slight intermit','71':'Snow slight cont','72':'Snow mod intermit','73':'Snow mod cont','74':'Snow heavy intermit','75':'Snow heavy cont','76':'Diamond dust','77':'Snow grains','78':'Ice crystals','79':'Ice pellets','80':'Rain shower slight','81':'Rain shower mod/heavy','82':'Rain shower violent','83':'Rain+snow shower slight','84':'Rain+snow shower mod/heavy','85':'Snow shower slight','86':'Snow shower mod/heavy','87':'Snow/ice pellet shower slight','88':'Snow/ice pellet shower mod/heavy','89':'Hail shower slight','90':'Hail shower mod/heavy','91':'TS slight rain','92':'TS mod/heavy rain','93':'TS slight snow/hail','94':'TS mod/heavy snow/hail','95':'TS slight/mod rain/snow','96':'TS slight/mod hail','97':'TS heavy rain/snow','98':'TS + duststorm','99':'TS heavy hail'};
 const T_W={'0':'Cloud ≤½','1':'Cloud >½ part','2':'Cloud >½ all','3':'Sandstorm/blowing snow','4':'Fog/thick haze','5':'Drizzle','6':'Rain','7':'Snow/rain+snow','8':'Showers','9':'Thunderstorm'};
@@ -3283,11 +3333,43 @@ const SYNOP_SOURCES=[
 ];
 const synopStationData={tnca:{},tncb:{},tncc:{}};
 
+// Pull comparable values out of the latest METAR for cross-checking SYNOP
+function metarVals(icao){
+  const st=metarState[icao];
+  if(!st||!st.lastRaw)return null;
+  const p=parseMetar(st.lastRaw);
+  let dir=null,sp=null;
+  const m=(p.windBase||'').match(/^(VRB|\d{3})(\d{2})(?:G\d{2,3})?KT$/);
+  if(m){dir=m[1]==='VRB'?'VRB':parseInt(m[1]);sp=parseInt(m[2]);}
+  let temp=null;
+  const tm=(p.td||'').match(/^(M?\d{2})\//);
+  if(tm)temp=parseInt(tm[1].replace('M','-'));
+  const vkm=isFinite(p.visMin)?(p.visMin>=9999?10:p.visMin/1000):null;
+  return{dir,sp,temp,vkm};
+}
+// Compare a decoded SYNOP report against the matching METAR; flag discrepancies
+function synopMetarQC(stationKey,rep){
+  const m=metarVals(stationKey.toUpperCase());
+  if(!m||!rep)return '';
+  const diffs=[];
+  const sv=rep.visText&&/^[\d.]+\s*km/.test(rep.visText)?parseFloat(rep.visText):null;
+  if(sv!=null&&m.vkm!=null&&Math.abs(sv-m.vkm)>3) diffs.push(`vis ${sv} vs ${m.vkm.toFixed(0)} km`);
+  if(typeof rep.dir==='number'&&typeof m.dir==='number'){
+    let dd=Math.abs(rep.dir-m.dir);if(dd>180)dd=360-dd;
+    if(dd>30) diffs.push(`wind dir ${rep.dir}° vs ${m.dir}°`);
+  }
+  if(rep.windSp!=null&&m.sp!=null&&Math.abs(rep.windSp-m.sp)>5) diffs.push(`wind ${rep.windSp} vs ${m.sp} kt`);
+  if(rep.T!=null&&m.temp!=null&&Math.abs(rep.T-m.temp)>2) diffs.push(`temp ${rep.T}° vs ${m.temp}°`);
+  if(diffs.length) return `<div class="synop-qc warn">⚠ Differs from latest METAR — ${escHtml(diffs.join(' · '))}</div>`;
+  return `<div class="synop-qc ok">✓ Consistent with latest METAR</div>`;
+}
 function updateSynopStationCard(stationKey){
   const cont=$('synop-card-'+stationKey);if(!cont)return;
   const data=synopStationData[stationKey];
   const sources=SYNOP_SOURCES.filter(s=>s.station===stationKey);
-  let html='';
+  let repForQC=null;
+  sources.forEach(src=>{const d=data[src.key];if(d&&d.parsed.reports.length&&!repForQC)repForQC=d.parsed.reports[0];});
+  let html=repForQC?synopMetarQC(stationKey,repForQC):'';
   sources.forEach(src=>{
     const d=data[src.key];if(!d)return;
     const parsed=d.parsed;
@@ -3562,6 +3644,32 @@ function buildKnmiGridHtml(parsed){
   return shown?html:null;
 }
 
+/* Render every parsed KNMI row as a tile — used for the Marine page, which
+   shares the Current page's table layout but with sea-state fields. */
+function buildKnmiMarineHtml(parsed){
+  if(!parsed) return null;
+  var html='<div class="knmi-station">🇧🇶 Bonaire Marine (KNMI)'+(parsed.time?' · '+parsed.time:'')+'</div>';
+  var shown=0;
+  for(var key in parsed){
+    if(key==='time') continue;
+    var rec=parsed[key];
+    if(!rec||rec.value===undefined||rec.value==='') continue;
+    // Tidy the label: drop the trailing "(unit)" so it reads cleanly.
+    var lbl=key.replace(/\s*\([^)]*\)\s*$/,'').trim();
+    var unitM=key.match(/\(([^)]*)\)\s*$/);
+    var unit=unitM?unitM[1]:'';
+    var disp=rec.value;
+    var num=parseFloat(rec.value);
+    // Convert wind from m/s to knots for consistency with the rest of the app.
+    if(/wind\s*speed|gust/i.test(key)&&isFinite(num)){disp=Math.round(num*1.94384);unit='kt';}
+    if(/winddirection/i.test(key)){disp=rec.value+(rec.extra?' '+rec.extra+'°':'');unit='';}
+    html+='<div class="knmi-tile"><div class="knmi-tile-lbl">'+escHtml(lbl)+'</div>'+
+          '<div class="knmi-tile-val">'+escHtml(String(disp))+(unit?' <small>'+escHtml(unit)+'</small>':'')+'</div></div>';
+    shown++;
+  }
+  return shown?html:null;
+}
+
 async function loadWeather(){
   const cur=$('wxCurrent'),fc=$('wxForecast'),mar=$('wxMarine');
   // Current: fast-paint from cached page, keep it if present
@@ -3588,30 +3696,33 @@ async function loadWeather(){
     }
   }catch(e){console.error('wx current',e);}
 
-  // Forecast
+  // Forecast — parse "Day … NN°C" pairs; cache-paint first
+  function fcHtml(text){
+    const re=/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Today|Tomorrow)[^0-9-]{0,40}(-?[0-9]+)\s*°?\s*C/gi;
+    const days=[];let m;
+    while((m=re.exec(text))!==null&&days.length<7)days.push({day:m[1],temp:parseInt(m[2])});
+    return days.length?days.map(d=>`<div class="wx-fc-day"><div class="d">${d.day}</div><div class="ic">☀</div><div class="t">${d.temp}°</div></div>`).join(''):null;
+  }
+  if(fc){const c=cacheGet('wxfc');const h=c?fcHtml(sanitize(c)):null;if(h)fc.innerHTML=h;}
   try{
     const out=await fetchRetry(KNMI_FC);
     if(out.ok&&fc){
-      const text=sanitize(out.text);
-      const re=/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Today|Tomorrow)[^0-9-]{0,40}(-?[0-9]+)\s*°?\s*C/gi;
-      const days=[];let m;
-      while((m=re.exec(text))!==null&&days.length<7)days.push({day:m[1],temp:parseInt(m[2])});
-      fc.innerHTML=days.length?days.map(d=>`<div class="wx-fc-day"><div class="d">${d.day}</div><div class="ic">☀</div><div class="t">${d.temp}°</div></div>`).join(''):`<div class="loading-msg">No forecast parsed. <a href="${KNMI_FC}" target="_blank">Open →</a></div>`;
-    }
+      const html=fcHtml(sanitize(out.text));
+      if(html){cacheSet('wxfc',out.text);fc.innerHTML=html;}
+      else if(!cacheGet('wxfc'))fc.innerHTML=`<div class="loading-msg">No forecast parsed. <a href="${KNMI_FC}" target="_blank">Open →</a></div>`;
+    }else if(fc&&!cacheGet('wxfc')){fc.innerHTML=`<div class="loading-msg">Forecast unavailable. <a href="${KNMI_FC}" target="_blank">Open →</a></div>`;}
   }catch(e){console.error('wx forecast',e);}
 
-  // Marine
+  // Marine — same KNMI table layout as Current; cache-paint first
+  if(mar){const c=cacheGet('wxmar');const p=c?parseKnmiBonaire(c):null;const h=p?buildKnmiMarineHtml(p):null;if(h)mar.innerHTML=h;}
   try{
     const out=await fetchRetry(KNMI_MAR);
     if(out.ok&&mar){
-      const f=extractWxFields(out.text);
-      const cards=[
-        f.wave_m!=null?wxCard('Wave Height',f.wave_m.toFixed(1),' m',''):'',
-        f.sea_temp_c!=null?wxCard('Sea Temp',f.sea_temp_c.toFixed(1),'°C',''):'',
-        f.wind_speed!=null?wxCard('Marine Wind',Math.round(f.wind_speed),' kt',f.wind_dir||''):'',
-      ].filter(Boolean);
-      mar.innerHTML=cards.length?cards.join(''):`<div class="loading-msg" style="grid-column:1/-1">No marine data. <a href="${KNMI_MAR}" target="_blank">Open →</a></div>`;
-    }
+      const parsed=parseKnmiBonaire(out.text);
+      const html=parsed?buildKnmiMarineHtml(parsed):null;
+      if(html){cacheSet('wxmar',out.text);mar.innerHTML=html;}
+      else if(!cacheGet('wxmar'))mar.innerHTML=`<div class="loading-msg" style="grid-column:1/-1">No marine data. <a href="${KNMI_MAR}" target="_blank">Open →</a></div>`;
+    }else if(mar&&!cacheGet('wxmar')){mar.innerHTML=`<div class="loading-msg" style="grid-column:1/-1">Marine unavailable. <a href="${KNMI_MAR}" target="_blank">Open →</a></div>`;}
   }catch(e){console.error('wx marine',e);}
 }
 
@@ -3693,10 +3804,27 @@ if(!document.querySelector('style[data-rwc-hidden]')){
   document.head.appendChild(s);
 }
 
+/* ── ACCESSIBILITY ── */
+function applyA11y(){
+  // Decorative emoji/glyphs should not be announced by screen readers
+  document.querySelectorAll('.nav-btn .ic, .mc-flag, .hdr-clock .lbl').forEach(e=>e.setAttribute('aria-hidden','true'));
+  // Icon-only buttons need accessible names
+  const labels={'mute-btn':'Toggle alert sound','refresh-btn':'Refresh all data','metar-refresh-btn':'Refresh METARs','taf-refresh-btn':'Refresh TAFs','synop-refresh-btn':'Refresh SYNOPs','weather-refresh-btn':'Refresh weather','toggleMap':'Toggle station map'};
+  Object.keys(labels).forEach(id=>{const el=document.getElementById(id);if(el&&!el.getAttribute('aria-label'))el.setAttribute('aria-label',labels[id]);});
+  // Mark the nav as a tablist and reflect the active tab
+  const nav=document.querySelector('.nav');if(nav)nav.setAttribute('role','tablist');
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.setAttribute('role','tab');b.setAttribute('aria-selected',b.classList.contains('active')?'true':'false');});
+}
+// Keep aria-selected in sync on tab switch
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.nav-btn').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
+}));
+
 /* ── INIT ── */
 buildMetarTable();
 buildTafTable();
 buildATC();
+applyA11y();
 
 (async function init(){
   // Instant paint from last good data, then refresh in background
