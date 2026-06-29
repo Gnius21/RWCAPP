@@ -404,17 +404,33 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
   .nav-btn .ic{font-size:19px;}
   .nav-btn:hover{color:var(--acc);}
   /* center content column */
-  .panel{max-width:1200px;margin:0 auto;padding:18px 24px 36px;}
+  .panel{max-width:1320px;margin:0 auto;padding:18px 24px 36px;}
   /* METAR cards become a responsive grid */
-  .metar-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start;}
+  .metar-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start;}
   .mc{transition:border-color .15s,transform .15s,box-shadow .15s;}
   .mc:hover{border-color:var(--border-hi);transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,0,0,0.35);}
   /* SYNOP report tiles wider */
   .sy-grid{grid-template-columns:repeat(4,1fr);}
-  /* lessons: two-column cards + larger pictures */
+  /* SYNOP station cards (SI + SM) side by side per island */
+  [id^="synop-card-"]{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
+  [id^="synop-card-"] .synop-qc{grid-column:1/-1;margin-bottom:0;}
+  [id^="synop-card-"] .synop-stn-card{margin-bottom:0;}
+  /* lessons: magazine two-column flow, full-width controls on top */
+  #lessons-sub-guide{column-count:2;column-gap:18px;}
+  #lessons-sub-bar,.lsn-idx,.lsn-search-wrap{column-span:all;}
+  .lsn-card,.lsn-pubs{break-inside:avoid;}
   .lsn-pic-grid{grid-template-columns:1fr 1fr;}
   .lsn-pic-card.wide{grid-column:auto;}
   .lsn-link-item{cursor:pointer;}
+  /* weather: Current / Forecast / Marine across the width */
+  .wx-cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;align-items:start;}
+  .wx-cols .obs-card{margin-bottom:0;}
+  /* encoder: two-pane — inputs left, generated output sticky on the right */
+  #synop-sub-encode > div{padding:0!important;}
+  .enc-card{display:grid;grid-template-columns:1fr 400px;column-gap:0;align-items:start;overflow:visible;}
+  .enc-hdr{grid-column:1/-1;}
+  .enc-card > .enc-sec{grid-column:1;border-right:1px solid var(--border);}
+  .enc-card > .enc-out-wrap{grid-column:2;grid-row:2/999;position:sticky;top:10px;align-self:start;border-left:1px solid var(--border);}
   /* nicer scrollbar on desktop */
   .scroll::-webkit-scrollbar{width:10px;}
   .scroll::-webkit-scrollbar-thumb{background:rgba(85,193,255,0.22);border-radius:6px;}
@@ -424,6 +440,9 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 @media (min-width:1180px){
   .metar-cards{grid-template-columns:repeat(3,1fr);}
   .lsn-pic-grid{grid-template-columns:1fr 1fr 1fr;}
+}
+@media (min-width:1500px){
+  .panel{max-width:1440px;}
 }
 /* Accessibility: honour reduced-motion and provide a visible focus ring */
 @media (prefers-reduced-motion: reduce){
@@ -1785,17 +1804,19 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
         <div class="s-title">Weather · Bonaire</div>
         <button class="s-btn" id="weather-refresh-btn">↻</button>
       </div>
-      <div class="obs-card">
-        <div class="obs-card-title">🌡 Current</div>
-        <div class="wx-grid" id="wxCurrent"><div class="loading-msg" style="grid-column:1/-1">Loading…</div></div>
-      </div>
-      <div class="obs-card">
-        <div class="obs-card-title">📅 Forecast</div>
-        <div id="wxForecast" class="wx-fc-grid"><div class="loading-msg">Loading…</div></div>
-      </div>
-      <div class="obs-card">
-        <div class="obs-card-title">🌊 Marine</div>
-        <div class="wx-grid" id="wxMarine"><div class="loading-msg" style="grid-column:1/-1">Loading…</div></div>
+      <div class="wx-cols">
+        <div class="obs-card">
+          <div class="obs-card-title">🌡 Current</div>
+          <div class="wx-grid" id="wxCurrent"><div class="loading-msg" style="grid-column:1/-1">Loading…</div></div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-card-title">📅 Forecast</div>
+          <div id="wxForecast" class="wx-fc-grid"><div class="loading-msg">Loading…</div></div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-card-title">🌊 Marine</div>
+          <div class="wx-grid" id="wxMarine"><div class="loading-msg" style="grid-column:1/-1">Loading…</div></div>
+        </div>
       </div>
     </div>
 
