@@ -349,6 +349,13 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
 .wx-fc-day .d{font-family:var(--cond);font-weight:700;font-size:11px;color:var(--acc);letter-spacing:1px;}
 .wx-fc-day .ic{font-size:22px;margin:4px 0;}
 .wx-fc-day .t{font-family:var(--mono);font-weight:700;font-size:14px;color:#fff;}
+/* Forecast as a list of text periods (Today / Tonight / Outlook …) */
+.wx-fc-list{display:flex;flex-direction:column;gap:8px;}
+.wx-fc-period{border:1px solid var(--border);border-left:3px solid var(--acc);border-radius:0 var(--r) var(--r) 0;background:rgba(3,12,24,0.85);padding:9px 12px;}
+.wx-fc-period .fc-when{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--cond);font-weight:800;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--acc);margin-bottom:4px;}
+.wx-fc-period .fc-chip{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;background:rgba(85,193,255,0.1);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap;}
+.wx-fc-period .fc-txt{font-family:var(--sans);font-size:13px;line-height:1.55;color:rgba(215,235,255,0.9);}
+.wx-fc-text{font-family:var(--sans);font-size:13px;line-height:1.6;color:rgba(215,235,255,0.88);white-space:pre-wrap;}
 /* KNMI Bonaire observation tiles */
 .knmi-station{grid-column:1/-1;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
 .knmi-tile{padding:11px 12px;border-radius:var(--r);border:1px solid var(--border);border-top:3px solid var(--acc);background:rgba(3,12,24,0.85);}
@@ -1811,7 +1818,7 @@ select.enc-inp option{background:#0d1f36;color:#e8f4ff;}
         </div>
         <div class="obs-card">
           <div class="obs-card-title">📅 Forecast</div>
-          <div id="wxForecast" class="wx-fc-grid"><div class="loading-msg">Loading…</div></div>
+          <div id="wxForecast"><div class="loading-msg">Loading…</div></div>
         </div>
         <div class="obs-card">
           <div class="obs-card-title">🌊 Marine</div>
@@ -3693,15 +3700,12 @@ function buildKnmiMarineHtml(parsed){
 
 async function loadWeather(){
   const cur=$('wxCurrent'),fc=$('wxForecast'),mar=$('wxMarine');
-  // Current: fast-paint from cached page, keep it if present
-  if(cur){
-    const cached=cacheGet('wxpage');
-    const cp=cached?parseKnmiBonaire(cached):null;
-    const ch=cp?buildKnmiGridHtml(cp):null;
-    cur.innerHTML=ch||'<div class="loading-msg" style="grid-column:1/-1">Loading…</div>';
-  }
-  if(fc)fc.innerHTML='<div class="loading-msg">Loading…</div>';
-  if(mar)mar.innerHTML='<div class="loading-msg" style="grid-column:1/-1">Loading…</div>';
+  // Fast-paint all three sections from cache BEFORE any network await,
+  // otherwise the forecast/marine cache paint is blocked behind the slow
+  // Current fetch. (fcHtml is hoisted, so it's callable here.)
+  if(cur){const c=cacheGet('wxpage');const p=c?parseKnmiBonaire(c):null;const h=p?buildKnmiGridHtml(p):null;cur.innerHTML=h||'<div class="loading-msg" style="grid-column:1/-1">Loading…</div>';}
+  if(fc){const c=cacheGet('wxfc');const h=c?fcHtml(sanitize(c)):null;fc.innerHTML=h||'<div class="loading-msg">Loading…</div>';}
+  if(mar){const c=cacheGet('wxmar');const p=c?parseKnmiBonaire(c):null;const h=p?buildKnmiMarineHtml(p):null;mar.innerHTML=h||'<div class="loading-msg" style="grid-column:1/-1">Loading…</div>';}
 
   // Current — KNMI Bonaire observation table
   try{
@@ -3717,14 +3721,51 @@ async function loadWeather(){
     }
   }catch(e){console.error('wx current',e);}
 
-  // Forecast — parse "Day … NN°C" pairs; cache-paint first
-  function fcHtml(text){
-    const re=/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Today|Tomorrow)[^0-9-]{0,40}(-?[0-9]+)\s*°?\s*C/gi;
-    const days=[];let m;
-    while((m=re.exec(text))!==null&&days.length<7)days.push({day:m[1],temp:parseInt(m[2])});
-    return days.length?days.map(d=>`<div class="wx-fc-day"><div class="d">${d.day}</div><div class="ic">☀</div><div class="t">${d.temp}°</div></div>`).join(''):null;
+  // Forecast — the KNMI DC page is a textual outlook (Today / Tonight /
+  // Tomorrow / day names / Outlook), so parse it into period cards. Falls
+  // back to plain text, then to the old day/temp tiles, so something always
+  // shows instead of "No forecast parsed".
+  function fcHtml(raw){
+    if(!raw) return null;
+    // Decode entities, turn block tags into line breaks, then strip remaining tags.
+    var html=String(raw).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').replace(/&deg;/g,'°').replace(/&amp;/g,'&');
+    var text=html.replace(/<\s*br\s*\/?>/gi,'\n').replace(/<\/(p|div|tr|li|h[1-6]|table)\s*>/gi,'\n').replace(/<[^>]+>/g,' ');
+    var lines=text.replace(/[ \t ]+/g,' ').split(/\n+/).map(function(s){return s.trim();}).filter(Boolean);
+    var PERIOD=/^(Today|Tonight|This (?:morning|afternoon|evening)|Tomorrow(?:\s*night)?|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Day\s*\d|Outlook|Synopsis|Situation)\b[:.–-]?\s*/i;
+    var periods=[],cur=null;
+    lines.forEach(function(ln){
+      var m=ln.match(PERIOD);
+      if(m){
+        if(cur) periods.push(cur);
+        cur={when:m[1].replace(/\s+/g,' ').trim(), body:ln.slice(m[0].length).trim()};
+      }else if(cur){
+        cur.body+=(cur.body?' ':'')+ln;
+      }
+    });
+    if(cur) periods.push(cur);
+    // Only keep periods that carry some description text.
+    periods=periods.filter(function(p){return p.body&&p.body.length>1;});
+    if(periods.length){
+      return '<div class="wx-fc-list">'+periods.slice(0,8).map(function(p){
+        var tm=p.body.match(/(\d{1,2})\s*°?\s*C/);
+        var wm=p.body.match(/([NESW]{1,3})?\s*(\d{1,3})\s*(?:-\s*\d{1,3}\s*)?(?:kt|kn|knots)/i);
+        var chips=[];
+        if(tm) chips.push(tm[1]+'°C');
+        if(wm) chips.push((wm[1]?wm[1]+' ':'')+wm[2]+' kt');
+        var chip=chips.length?'<span class="fc-chip">'+escHtml(chips.join(' · '))+'</span>':'';
+        return '<div class="wx-fc-period"><div class="fc-when">'+escHtml(p.when)+chip+'</div><div class="fc-txt">'+escHtml(p.body)+'</div></div>';
+      }).join('')+'</div>';
+    }
+    // Fallback A: day/temp tiles (older layout) if present
+    var re=/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Today|Tomorrow)[^0-9-]{0,40}(-?[0-9]+)\s*°?\s*C/gi,days=[],dm;
+    while((dm=re.exec(text))!==null&&days.length<7)days.push({day:dm[1],temp:parseInt(dm[2])});
+    if(days.length) return '<div class="wx-fc-grid">'+days.map(function(d){return '<div class="wx-fc-day"><div class="d">'+d.day+'</div><div class="ic">☀</div><div class="t">'+d.temp+'°</div></div>';}).join('')+'</div>';
+    // Fallback B: just show the readable text if it looks like a forecast
+    var joined=lines.join('\n');
+    if(/\b(cloud|shower|rain|wind|sunny|clear|partly|scattered|isolated|°c|kt)\b/i.test(joined))
+      return '<div class="wx-fc-text">'+escHtml(joined.slice(0,900))+'</div>';
+    return null;
   }
-  if(fc){const c=cacheGet('wxfc');const h=c?fcHtml(sanitize(c)):null;if(h)fc.innerHTML=h;}
   try{
     const out=await fetchRetry(KNMI_FC);
     if(out.ok&&fc){
@@ -3734,8 +3775,7 @@ async function loadWeather(){
     }else if(fc&&!cacheGet('wxfc')){fc.innerHTML=`<div class="loading-msg">Forecast unavailable. <a href="${KNMI_FC}" target="_blank">Open →</a></div>`;}
   }catch(e){console.error('wx forecast',e);}
 
-  // Marine — same KNMI table layout as Current; cache-paint first
-  if(mar){const c=cacheGet('wxmar');const p=c?parseKnmiBonaire(c):null;const h=p?buildKnmiMarineHtml(p):null;if(h)mar.innerHTML=h;}
+  // Marine — same KNMI table layout as Current
   try{
     const out=await fetchRetry(KNMI_MAR);
     if(out.ok&&mar){
